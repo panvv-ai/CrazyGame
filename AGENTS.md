@@ -1,44 +1,73 @@
+<!-- CODEGRAPH_START -->
+## CodeGraph
+
+In repositories indexed by CodeGraph (a `.codegraph/` directory exists at the repo root), reach for it BEFORE grep/find or reading files when you need to understand or locate code:
+
+- **MCP tool** (when available): `codegraph_explore` answers most code questions in one call.
+- **Shell** (always works): `codegraph explore "<symbol names or question>"`.
+
+If there is no `.codegraph/` directory, skip CodeGraph entirely.
+<!-- CODEGRAPH_END -->
+
 # Repository Guidelines
 
-## Project Structure & Module Organization
-- `src/agents/` — Agent implementations (business logic). Add new agents here.
-- `src/collectors/` — Data collectors (quotes, kline, news, etc.).
-- `src/core/` — Core utilities (AI client, notifier, scheduler helpers).
-- `src/web/` — FastAPI app (models, API routes, DB setup).
-- `frontend/` — React + TypeScript (Vite + Tailwind). UI lives in `frontend/src/`.
-- `prompts/` — Prompt templates used by agents.
-- `config/`, `data/` — Config files and runtime data (persisted at `DATA_DIR`).
-- `server.py` — Backend entrypoint; also registers agents and data sources.
-- `tests/` — Placeholder for backend tests.
-- `build.sh`, `Dockerfile` — Build frontend and container images.
+## Scope
 
-## Build, Test, and Development Commands
-- Backend (dev): `make dev-api`（自动 venv+依赖+uvicorn reload，监听 `:8000`）；或手动 `python server.py`。
-- Frontend (dev): `make dev-web`（自动 pnpm install+dev，served on `http://localhost:5183`）。
-- Frontend (build): `cd frontend && pnpm install --frozen-lockfile && pnpm build`.
-- Docker image: `./build.sh <version>` (copies `frontend/dist` to `./static` and builds image).
-- Run via Docker: `docker run -d -p 8000:8000 -v panwatch_data:/app/data sunxiao0721/panwatch:latest`.
-- Tests (backend): add pytest tests under `tests/` then run `pytest`.
+PanWatchDIY v2 is a private long-term investing monitor. Preserve the narrow product loop:
 
-## Coding Style & Naming Conventions
-- Python: PEP 8, 4-space indent, type hints required for new code. Files `snake_case.py`, classes `PascalCase`, functions/vars `snake_case`.
-- Agents: implement in `src/agents/*.py`, register in `server.py` (`AGENT_REGISTRY`) and seed config in `seed_agents()`.
-- Collectors: place in `src/collectors/`, keep stateless; return typed dataclasses.
-- TypeScript: components `PascalCase.tsx` in `frontend/src/`, hooks `use-` prefix, utilities `camelCase.ts`.
-- Prompts: one prompt file per agent in `prompts/` (e.g., `daily_report.txt`).
+```text
+quotes -> watchlist -> weighted groups -> lightweight holdings -> alerts -> daily review
+```
 
-## Testing Guidelines
-- Backend: structure tests as `tests/test_<module>.py`; prefer fast, isolated unit tests around agents, collectors, and core.
-- Coverage: target meaningful coverage for new modules (no strict threshold yet, but include happy-path and error cases).
-- Fixtures: use factory helpers for DB models; avoid network calls (mock collectors and AI clients).
+Do not reintroduce the retired multi-Agent, paper trading, strategy research, MCP, Skill, news, or K-line UI without an explicit product decision.
 
-## Commit & Pull Request Guidelines
-- Commit format: `<type>: <subject>` where type ∈ `{feat, fix, docs, refactor, style, test}`.
-  Example: `feat: add intraday monitor agent`.
-- Pull Requests: include a clear description, linked issues, and screenshots/GIFs for UI changes. Update docs/prompts when applicable.
-- CI hygiene: ensure backend runs (`python server.py`) and frontend builds (`pnpm build`). No secrets in commits; use `.env` or UI settings.
+## Structure
 
-## Security & Configuration Tips
-- Secrets: do not commit API keys; configure via UI or env vars (`.env`, `AUTH_USERNAME`, `AUTH_PASSWORD`, `JWT_SECRET`, `DATA_DIR`).
-- Network/SSL: optional corporate CA via `data/ca-bundle.pem` is auto-managed; respect `HTTP(S)_PROXY`/app proxy settings.
-- Playwright: in Docker, browsers install under `DATA_DIR/playwright` automatically; local dev uses system install.
+- `src/panwatch/` — v2 FastAPI app, SQLAlchemy models, market adapter, alerts, notifications, scheduler, and daily review.
+- `src/collectors/fund_collector.py` — off-exchange fund NAV and holdings.
+- `src/collectors/fund_quotes.py` — off-exchange fund intraday estimates.
+- `packages/marketdata/` — reusable listed-market data engine with provider fallback.
+- `frontend/src/panwatch/` — React app, i18n resources, pages, and design components.
+- `tests/v2/` — backend tests.
+- `docs/v2-lean-implementation-plan.md` — product and implementation decisions.
+- `docs/design-language.md` — visual system and interaction rules.
+
+## Commands
+
+```bash
+make setup
+make dev-api
+make dev-web
+make test
+make build
+make compose-up
+```
+
+Direct checks:
+
+```bash
+.venv/bin/python -m pytest tests/v2 -q
+cd frontend && pnpm check:i18n
+cd frontend && pnpm test
+cd frontend && pnpm build
+docker compose config
+```
+
+## Conventions
+
+- Python: Python 3.11+, PEP 8, type hints, `snake_case`.
+- TypeScript: React function components in PascalCase, utilities in camelCase.
+- New behavior requires a failing test first.
+- UI copy must go through `frontend/src/panwatch/i18n.ts`; `pnpm check:i18n` rejects CJK literals outside that file.
+- Market values must carry `as_of`, `source`, and `freshness`; never label estimated fund values as official net asset value.
+- Credentials are encrypted at rest and must never be returned in clear text.
+- Keep market data access behind the provider adapter so licensed sources can be added later.
+
+## Product Boundaries
+
+- Single user and single lightweight portfolio.
+- A-share ETFs only; no Hong Kong or US ETF support in v2.
+- Off-exchange funds are not continuously traded; estimates and official NAV must be visually distinct.
+- The default interface language is `zh-CN`.
+- Dark theme only in v2.
+- Keep the archived full-feature version at tag `archive/full-feature-2026-11`.
