@@ -1,153 +1,216 @@
-# PanWatchDIY v2
+# PanWatch
 
-私有部署的长期投资观察站。聚焦 A 股、港股、美股、A 股场内 ETF 与场外基金的自选、加权组合、轻量持仓、价格提醒和每日持仓健康简报。
+**本地优先的多市场长期投资观察工具。**
 
-默认简体中文，可切换英文；默认深色界面。
+<p align="center">
+  <img alt="Python 3.11" src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white">
+  <img alt="Node.js 22+" src="https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white">
+  <img alt="React 18" src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white">
+  <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-yellow.svg">
+</p>
 
-## 功能
+<p align="center">
+  <a href="README.md">简体中文</a> | <a href="docs/README.en.md">English</a>
+</p>
 
-- A 股、港股、美股股票搜索与自选。
-- A 股场内 ETF、开放式基金/ETF 联接自选。
-- 按相对权重创建混合 Group，权重自动归一。
-- Group 当日加权涨跌、覆盖率与历史归一曲线。
-- 单账户轻量持仓：数量、平均成本、市值、浮动盈亏。
-- 价格与当日涨跌幅提醒。
-- 飞书机器人和阿里云短信通知。
-- 每个交易日 15:20 生成持仓健康简报，15:28 自动重试一次。
-- 中文与英文界面，提醒和 AI 简报跟随界面语言。
-- Docker Compose 单服务部署。
-- 全部历史行情使用折线/面积图，不包含 K 线图。
+PanWatch 把股票、ETF 和场外基金收束到同一个本地观察站。你可以维护自选清单、用权重组合观察整体趋势、记录轻量持仓，并在价格或涨跌幅达到条件时通过飞书、短信收到提醒。
 
-## 数据来源
+应用采用本地单用户架构，没有账号、登录、注册或权限系统。SQLite 保存配置和业务状态，AI Key 与通知凭据加密存储。
 
-行情通过 `packages/marketdata` 的主备引擎获取：
+> [!IMPORTANT]
+> 行情来自公开网页接口，不是交易所正式授权行情。数据可能延迟、限流或改变格式。场外基金盘中值为估算，正式收益以基金净值为准。本项目仅供个人研究，不构成投资建议。
 
-| 标的 | 主源 | 备用源 | 历史曲线 |
-|---|---|---|---|
-| A 股 | 腾讯 | 东方财富 | 腾讯、东方财富 |
-| 港股 | 腾讯 | 新浪、东方财富 | 腾讯、东方财富 |
-| 美股 | 腾讯 | 新浪 | 腾讯、Stooq |
-| A 股 ETF | 腾讯/东方财富 | — | 交易价格日线 |
-| 场外基金 | 天天基金估值 | 东方财富净值 | 东方财富正式净值 |
+## 产品功能
 
-这些是公开网页数据接口，不是交易所授权行情。数据可能延迟、限流或改变格式。场外基金盘中数据是估值，正式收益以基金净值为准。
+<p align="center">
+  <img src="docs/images/dashboard.png" alt="PanWatch 首页，展示加权组合、自选行情与每日持仓简报" width="100%">
+</p>
 
-本项目仅供私有、单用户研究和长期投资观察，不构成投资建议。不要把行情接口转发给第三方，也不要将未认证的服务直接暴露到公网。
+- **多市场自选**：A 股、港股、美股股票与 A 股场内 ETF。
+- **场外基金**：支持基金搜索、盘中估值、正式净值与历史净值曲线。
+- **加权组合**：目标权重自动归一，展示当日加权涨跌、覆盖率和归一曲线。
+- **长期曲线**：支持 1 月、3 月、1 年、3 年、全部，组合可叠加最多 5 条成分线。
+- **轻量持仓**：单账户记录数量、平均成本、市值和浮动盈亏，并按币种汇总。
+- **智能提醒**：价格或当日涨跌幅阈值，支持每日一次、冷却时间和交易时段门控。
+- **飞书与短信**：每个提醒可独立选择通知渠道，支持重试和投递状态追踪。
+- **每日持仓健康**：A 股交易日 15:20 自动生成，15:28 失败重试，成功结果不重复生成。
+- **双语界面**：默认中文，可随时切换英文；AI 简报和提醒跟随界面语言。
+- **本地部署**：Docker Compose 一条命令启动，默认仅监听 `127.0.0.1`。
 
 ## 技术栈
 
-- Python 3.11
-- FastAPI、SQLAlchemy、SQLite、APScheduler
-- React 18、TypeScript、Vite
-- i18next、react-i18next
-- lightweight-charts
-- 腾讯/新浪/东方财富公开行情接口
+| 层级 | 技术 |
+| --- | --- |
+| 后端 API | Python 3.11、FastAPI、Pydantic、SQLAlchemy |
+| 调度与存储 | APScheduler、SQLite、WAL |
+| 行情层 | Tencent、Sina、Eastmoney、Stooq |
+| 场外基金 | 天天基金估值、东方财富净值 |
+| 前端 | React 18、TypeScript、Vite、i18next |
+| 图表 | lightweight-charts |
+| 通知 | 飞书自定义机器人、阿里云短信 |
+| 测试 | pytest、Vitest |
+| 部署 | Docker Compose |
 
-## 本地开发
+## 快速开始
+
+### 环境要求
+
+- Python 3.11
+- Node.js 22+
+- pnpm 10+
+- Docker Desktop（可选）
+
+### 本地启动
 
 ```bash
+git clone https://github.com/panvv-ai/PanWatchDIY.git
+cd PanWatchDIY
+
 make setup
 make dev-api
 ```
 
-另一个终端：
+另开一个终端：
 
 ```bash
 make dev-web
 ```
 
-- 后端：<http://localhost:8000>
-- 前端开发服务器：<http://localhost:5183>
+打开 <http://127.0.0.1:5183>。Vite 会把 `/api` 代理到本地 FastAPI。
 
-首次启动会创建 `data/panwatch-v2.db`。v2 不迁移旧版 `panwatch.db`，也不会删除旧数据库。
-
-## Docker Compose
+生产式本地运行：
 
 ```bash
-cp .env.example .env
-# 修改 AUTH_USERNAME、AUTH_PASSWORD、JWT_SECRET
+cd frontend && pnpm build
+cd ..
+cd backend && ../.venv/bin/python main.py
+```
+
+打开 <http://127.0.0.1:8000>。
+
+### Docker Compose
+
+```bash
+cp config/env.example .env
+# 按需修改 AI 配置和 APP_SECRET_KEY
 docker compose up -d --build
 ```
 
-打开 <http://localhost:8000>。
+打开 <http://127.0.0.1:8000>。
 
-数据持久化在 `panwatch_data` volume。升级或重建容器不会删除数据库。
+容器只映射到本机回环地址。SQLite 与凭据密钥保存在 `panwatch_data` volume。
 
-## 环境变量
+## 使用方式
 
-| 变量 | 说明 |
-|---|---|
-| `AUTH_USERNAME` | 首次启动创建的用户名 |
-| `AUTH_PASSWORD` | 首次启动创建的密码，至少 8 位 |
-| `JWT_SECRET` | JWT 签名密钥，建议至少 32 个随机字符 |
-| `DATA_DIR` | SQLite 数据目录 |
-| `TZ` | 应用时区，默认 `Asia/Shanghai` |
-| `AI_BASE_URL` | OpenAI 兼容 API 地址 |
-| `AI_API_KEY` | AI API Key，也可在设置页填写 |
-| `AI_MODEL` | 模型标识 |
-| `HTTP_PROXY` / `HTTPS_PROXY` | 可选出站代理 |
+### 1. 添加自选
 
-## 通知配置
+在“自选”页切换“股票”或“ETF 与基金”，搜索代码或名称后添加。港股代码会自动补足 5 位，场外基金代码补足 6 位。
 
-### 飞书
+### 2. 创建加权组合
 
-1. 在飞书群中添加“自定义机器人”。
-2. 复制 Webhook URL。
-3. 如机器人开启签名校验，同时填写签名密钥。
-4. 在设置页添加渠道并发送测试消息。
+在“组合”页选择自选标的并填写相对权重。例如 `30 / 25 / 20 / 15 / 10` 会被归一为 `30% / 25% / 20% / 15% / 10%`。权重不要求提前凑满 100%。
 
-### 阿里云短信
+### 3. 记录持仓
 
-需要自行准备：
+在“持仓”页选择已有自选标的，填写数量和平均成本。多币种分别汇总，不进行隐含汇率换算。
 
-- AccessKey ID / Secret
-- 已审核通过的短信签名
-- 中文模板 Code
-- 英文模板 Code
-- 接收手机号
+### 4. 设置提醒
 
-提醒模板变量为：
+在提醒表单中选择价格或涨跌幅条件、方向和阈值。飞书和阿里云短信需要在设置页先完成配置。
+
+阿里云提醒模板变量为：
 
 ```text
 ${rule} ${name} ${price} ${change}
 ```
 
-短信由阿里云按发送量收费。
+### 5. 查看每日健康简报
 
-## 每日持仓健康简报
+服务在 A 股交易日 15:20 生成持仓健康简报。需要先在设置页配置 OpenAI 兼容的 AI 服务和模型。
 
-- 仅 A 股交易日运行。
-- 默认 `15:20 Asia/Shanghai`。
-- 失败后 `15:28` 重试一次。
-- 已有成功结果时不会重复调用 AI。
-- 简报读取持仓、当日行情、120 日趋势和资产分布。
-- 只提供个人研究辅助，不执行交易。
+## 配置
 
-## 测试
+复制 [`config/env.example`](config/env.example) 为根目录 `.env`，或直接使用环境变量：
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `DATA_DIR` | `./data` | SQLite 与本地密钥目录 |
+| `TZ` | `Asia/Shanghai` | 应用与调度时区 |
+| `PANWATCH_HOST` | `127.0.0.1` | 本地服务监听地址 |
+| `PANWATCH_PORT` | `8000` | 本地服务端口 |
+| `APP_SECRET_KEY` | 自动生成 | 加密 AI Key 和通知凭据 |
+| `AI_BASE_URL` | `https://api.openai.com/v1` | OpenAI 兼容 API |
+| `AI_API_KEY` | 空 | AI API Key，也可在设置页填写 |
+| `AI_MODEL` | `gpt-4.1-mini` | 模型标识 |
+| `HTTP_PROXY` / `HTTPS_PROXY` | 空 | 可选行情代理 |
+
+## 项目结构
+
+```text
+.
+├── backend/
+│   ├── main.py
+│   ├── requirements.txt
+│   ├── requirements-dev.txt
+│   ├── pyproject.toml
+│   ├── src/panwatch/
+│   │   ├── api/          # FastAPI、依赖和路由
+│   │   ├── core/         # 配置、数据库、密钥、日历
+│   │   ├── domain/       # ORM、schema 和确定性业务规则
+│   │   ├── providers/    # 场外基金数据适配
+│   │   └── services/     # 行情、提醒、通知、AI、调度
+│   └── tests/
+├── frontend/
+│   ├── src/panwatch/     # React 页面、组件、i18n 和设计系统
+│   └── public/
+├── marketdata/           # 可复用股票/ETF 行情包
+├── config/env.example
+├── docs/                 # 架构、设计和英文 README
+├── scripts/build.sh
+├── compose.yaml
+├── Dockerfile
+└── Makefile
+```
+
+更详细的数据流和模块职责见 [架构文档](docs/architecture.md)，视觉规则见 [设计语言](docs/design-language.md)。
+
+## 数据与隐私
+
+- 默认数据库：`DATA_DIR/panwatch.sqlite3`。
+- 默认本地密钥：`DATA_DIR/.app-secret`，权限为 `0600`。
+- AI Key、飞书签名和阿里云 AccessKey 加密后写入 SQLite。
+- API 不会返回完整凭据，只返回掩码。
+- 本项目不会上传持仓、自选或提醒到第三方；只有配置的 AI 服务和通知渠道会接收对应内容。
+- 不要把无认证服务直接暴露到公网。Compose 默认只发布到 `127.0.0.1`。
+
+## 开发与测试
 
 ```bash
 make test
+
+cd frontend
+pnpm check:i18n
+pnpm test
+pnpm build
 ```
 
-或分别运行：
+单独运行：
 
 ```bash
-.venv/bin/python -m pytest tests/v2 -q
-cd frontend && pnpm test
-cd frontend && pnpm check:i18n
-cd frontend && pnpm build
+cd backend && ../.venv/bin/python -m pytest tests -q
+.venv/bin/python -m pytest marketdata/tests -q
 ```
 
-## 归档
+## 已知限制
 
-改版前的完整功能保存在 annotated tag：
+- 只支持 A 股场内 ETF，不包含港股和美股 ETF。
+- 场外基金无法提供连续交易价格，估值与正式净值必须区分。
+- 公开行情源没有 SLA，可能临时不可用。
+- 目前只有深色主题。
+- AI 输出只作为个人研究辅助，不会自动交易。
 
-```text
-archive/full-feature-2026-11
-```
+## 开源协议
 
-需要恢复旧功能时，从该 tag 查看或按需移植。不要在当前分支重新引入整套多 Agent、交易研究或 MCP 模块。
+Copyright © 2026 PanWatch contributors.
 
-## 许可
-
-MIT。详见 [LICENSE](LICENSE)。
+本项目采用 [MIT License](LICENSE)。
