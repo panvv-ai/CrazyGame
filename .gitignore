@@ -20,6 +20,10 @@ node_modules/
 frontend/dist/
 frontend/.vite/
 pnpm-debug.log*
+*.tsbuildinfo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
 # Claude
 .claude/

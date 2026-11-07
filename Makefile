@@ -1,7 +1,7 @@
 .PHONY: help setup dev-api dev-web test build compose-up compose-down
 
 help:
-	@echo "PanWatchDIY v2"
+	@echo "PanWatchDIY"
 	@echo "  make setup       Install Python and frontend dependencies"
 	@echo "  make dev-api     Run FastAPI on :8000"
 	@echo "  make dev-web     Run Vite on :5183"
@@ -11,19 +11,19 @@ help:
 
 setup:
 	uv venv .venv --python 3.11
-	uv pip install --python .venv/bin/python -r requirements.txt
+	uv pip install --python .venv/bin/python -r backend/requirements-dev.txt
 	cd frontend && pnpm install --frozen-lockfile
 
 dev-api:
 	@if [ ! -x .venv/bin/python ]; then $(MAKE) setup; fi
-	PANWATCH_RELOAD=1 .venv/bin/python server.py
+	cd backend && PANWATCH_RELOAD=1 ../.venv/bin/python main.py
 
 dev-web:
 	cd frontend && pnpm dev
 
 test:
-	.venv/bin/python -m pytest tests/v2 -q
-	.venv/bin/python -m pytest packages/marketdata/tests -q
+	cd backend && ../.venv/bin/python -m pytest tests -q
+	.venv/bin/python -m pytest marketdata/tests -q
 	cd frontend && pnpm test
 
 build:

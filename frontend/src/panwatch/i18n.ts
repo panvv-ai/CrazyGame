@@ -39,16 +39,6 @@ const zh = {
     required: '请完成必填项',
     unknownError: '操作失败，请稍后重试',
   },
-  auth: {
-    setupTitle: '建立你的观察站',
-    loginTitle: '回到你的观察站',
-    subtitle: '私有部署，只保留长期投资真正需要的信号。',
-    username: '用户名',
-    password: '密码',
-    setup: '创建账户',
-    login: '登录',
-    passwordHint: '至少 8 个字符',
-  },
   overview: {
     eyebrow: 'MARKET OBSERVATORY',
     greeting: '把噪音留在市场里',
@@ -231,16 +221,6 @@ const en = {
     configured: 'Configured',
     required: 'Complete the required fields',
     unknownError: 'Something went wrong. Try again.',
-  },
-  auth: {
-    setupTitle: 'Create your observatory',
-    loginTitle: 'Return to your observatory',
-    subtitle: 'Private by design. Only the signals long-term investing needs.',
-    username: 'Username',
-    password: 'Password',
-    setup: 'Create account',
-    login: 'Sign in',
-    passwordHint: 'At least 8 characters',
   },
   overview: {
     eyebrow: 'MARKET OBSERVATORY',

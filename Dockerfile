@@ -15,6 +15,7 @@ FROM python:3.11-slim AS runtime
 ENV PYTHONUNBUFFERED=1 \
     DATA_DIR=/app/data \
     TZ=Asia/Shanghai \
+    PANWATCH_HOST=0.0.0.0 \
     DOCKER=1
 
 WORKDIR /app
@@ -23,21 +24,22 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends tzdata ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt ./
-COPY packages/marketdata/pyproject.toml ./packages/marketdata/
-COPY packages/marketdata/src/ ./packages/marketdata/src/
-RUN pip install --no-cache-dir -r requirements.txt
+COPY backend/requirements.txt ./backend/
+COPY marketdata/pyproject.toml ./marketdata/
+COPY marketdata/src/ ./marketdata/src/
+RUN pip install --no-cache-dir -r backend/requirements.txt
 
-COPY src/ ./src/
-COPY server.py ./
-COPY VERSION ./
+COPY backend/src/ ./backend/src/
+COPY backend/main.py ./backend/
 RUN mkdir -p /app/data
 
-COPY --from=frontend-builder /app/frontend/dist ./static/
+COPY --from=frontend-builder /app/frontend/dist ./backend/static/
+
+WORKDIR /app/backend
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=6s --start-period=10s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')" || exit 1
 
-CMD ["python", "server.py"]
+CMD ["python", "main.py"]

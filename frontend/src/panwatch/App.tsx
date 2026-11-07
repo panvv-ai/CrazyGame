@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -12,17 +12,15 @@ import {
   Star,
 } from 'lucide-react'
 
-import { api, getToken, setToken } from './api'
+import { api } from './api'
 import { changeLanguage, default as i18n } from './i18n'
 import type { Language } from './lib'
-import { LoginPage } from './pages/Login'
 import { OverviewPage } from './pages/Overview'
 import { WatchlistPage } from './pages/Watchlist'
 import { GroupsPage } from './pages/Groups'
 import { HoldingsPage } from './pages/Holdings'
 import { AlertsPage } from './pages/Alerts'
 import { SettingsPage } from './pages/Settings'
-import { Loading } from './components/ui'
 
 const nav = [
   { to: '/', icon: LayoutDashboard, key: 'nav.overview', end: true },
@@ -44,8 +42,7 @@ function AuroraBackground() {
 }
 
 function LanguageButton({ onChanged }: { onChanged?: () => void }) {
-  const { t } = useTranslation()
-  const { i18n: instance } = useTranslation()
+  const { t, i18n: instance } = useTranslation()
   const next: Language = instance.language === 'zh-CN' ? 'en-US' : 'zh-CN'
   return (
     <button
@@ -62,7 +59,7 @@ function LanguageButton({ onChanged }: { onChanged?: () => void }) {
   )
 }
 
-function AppShell({ onLogout }: { onLogout: () => void }) {
+export default function App() {
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
@@ -125,9 +122,6 @@ function AppShell({ onLogout }: { onLogout: () => void }) {
           >
             <Settings size={17} />
           </button>
-          <button className="avatar-button" onClick={onLogout} title="Sign out">
-            P
-          </button>
         </div>
       </header>
 
@@ -158,62 +152,6 @@ function AppShell({ onLogout }: { onLogout: () => void }) {
       </nav>
       <footer className="app-footer">{t('product.disclaimer')}</footer>
     </div>
-  )
-}
-
-export default function App() {
-  const [checking, setChecking] = useState(true)
-  const [initialized, setInitialized] = useState(false)
-  const [authenticated, setAuthenticated] = useState(Boolean(getToken()))
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    api
-      .authStatus()
-      .then((status) => setInitialized(status.initialized))
-      .catch((reason) => setError(reason instanceof Error ? reason.message : 'offline'))
-      .finally(() => setChecking(false))
-  }, [])
-
-  useEffect(() => {
-    if (!authenticated) return
-    api.settings().catch(() => {
-      setToken('')
-      setAuthenticated(false)
-    })
-  }, [authenticated])
-
-  if (checking) {
-    return (
-      <main className="boot-screen">
-        <AuroraBackground />
-        <Loading />
-      </main>
-    )
-  }
-
-  if (!authenticated) {
-    return (
-      <>
-        {error ? <div className="offline-banner">{error}</div> : null}
-        <LoginPage
-          initialized={initialized}
-          onAuthenticated={() => {
-            setAuthenticated(true)
-            setInitialized(true)
-          }}
-        />
-      </>
-    )
-  }
-
-  return (
-    <AppShell
-      onLogout={() => {
-        setToken('')
-        setAuthenticated(false)
-      }}
-    />
   )
 }
 

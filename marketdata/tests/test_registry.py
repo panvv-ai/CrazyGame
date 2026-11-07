@@ -1,0 +1,38 @@
+"""Supported vendor registry stays aligned with the two live engines."""
+
+from __future__ import annotations
+
+from marketdata.client import MarketData
+from marketdata.defaults import StaticConfigProvider
+from marketdata.registry import VENDOR_CLASSES_BY_TYPE, build_vendors
+
+from marketdata import PACKAGE_VENDORS_BY_TYPE
+
+
+def test_package_vendors_by_type_content():
+    assert PACKAGE_VENDORS_BY_TYPE == {
+        "quote": frozenset({"tencent", "sina", "eastmoney"}),
+        "kline": frozenset({"tencent", "stooq", "eastmoney"}),
+    }
+
+
+def test_package_vendors_by_type_matches_actual_engine_registration():
+    md = MarketData(config=StaticConfigProvider({}))
+    engines = {
+        "quote": md._quote_engine,
+        "kline": md._kline_engine,
+    }
+    for datatype, engine in engines.items():
+        assert set(engine.vendors.keys()) == PACKAGE_VENDORS_BY_TYPE[datatype]
+
+
+def test_build_vendors_instantiates_all_registered_classes():
+    for datatype, classes in VENDOR_CLASSES_BY_TYPE.items():
+        vendors = build_vendors(datatype)
+        assert set(vendors.keys()) == set(classes.keys())
+        for name, instance in vendors.items():
+            assert instance.name == name
+
+
+def test_build_vendors_unknown_datatype_returns_empty():
+    assert build_vendors("not_a_real_type") == {}

@@ -13,22 +13,9 @@ import type {
   WatchlistKind,
 } from './types'
 
-const TOKEN_KEY = 'panwatch-v2-token'
-
-export function getToken(): string {
-  return window.localStorage.getItem(TOKEN_KEY) ?? ''
-}
-
-export function setToken(token: string): void {
-  if (token) window.localStorage.setItem(TOKEN_KEY, token)
-  else window.localStorage.removeItem(TOKEN_KEY)
-}
-
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
   headers.set('Content-Type', 'application/json')
-  const token = getToken()
-  if (token) headers.set('Authorization', `Bearer ${token}`)
   const response = await fetch(`/api${path}`, { ...init, headers })
   if (!response.ok) {
     let detail = `${response.status} ${response.statusText}`
@@ -38,25 +25,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     } catch {
       // Keep the status text.
     }
-    if (response.status === 401) setToken('')
     throw new Error(detail)
   }
   return response.json() as Promise<T>
 }
 
 export const api = {
-  authStatus: () => request<{ initialized: boolean }>('/auth/status'),
-  setup: (username: string, password: string) =>
-    request<{ token: string }>('/auth/setup', {
-      method: 'POST',
-      body: JSON.stringify({ username, password }),
-    }),
-  login: (username: string, password: string) =>
-    request<{ token: string }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password }),
-    }),
-
   search: (query: string, filters?: { market?: string; asset_type?: string }) => {
     const params = new URLSearchParams({ q: query })
     if (filters?.market) params.set('market', filters.market)

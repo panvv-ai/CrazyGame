@@ -1,36 +1,41 @@
 <!-- CODEGRAPH_START -->
 ## CodeGraph
 
-In repositories indexed by CodeGraph (a `.codegraph/` directory exists at the repo root), reach for it BEFORE grep/find or reading files when you need to understand or locate code:
+This repository is indexed by CodeGraph. Before grep/find or reading code manually, use:
 
-- **MCP tool** (when available): `codegraph_explore` answers most code questions in one call.
-- **Shell** (always works): `codegraph explore "<symbol names or question>"`.
+- MCP: `codegraph_explore`
+- Shell: `codegraph explore "<symbols or question>"`
 
-If there is no `.codegraph/` directory, skip CodeGraph entirely.
+Read CodeGraph results as current, line-numbered source.
 <!-- CODEGRAPH_END -->
 
 # Repository Guidelines
 
-## Scope
+## Product
 
-PanWatchDIY v2 is a private long-term investing monitor. Preserve the narrow product loop:
+PanWatch is a local, single-operator long-term market observatory.
+
+Keep this product loop narrow:
 
 ```text
 quotes -> watchlist -> weighted groups -> lightweight holdings -> alerts -> daily review
 ```
 
-Do not reintroduce the retired multi-Agent, paper trading, strategy research, MCP, Skill, news, or K-line UI without an explicit product decision.
+There is no user, login, registration, permission, paper-trading, strategy-research, or MCP subsystem. Do not add those back without an explicit product decision.
 
-## Structure
+## Layout
 
-- `src/panwatch/` — v2 FastAPI app, SQLAlchemy models, market adapter, alerts, notifications, scheduler, and daily review.
-- `src/collectors/fund_collector.py` — off-exchange fund NAV and holdings.
-- `src/collectors/fund_quotes.py` — off-exchange fund intraday estimates.
-- `packages/marketdata/` — reusable listed-market data engine with provider fallback.
-- `frontend/src/panwatch/` — React app, i18n resources, pages, and design components.
-- `tests/v2/` — backend tests.
-- `docs/v2-lean-implementation-plan.md` — product and implementation decisions.
-- `docs/design-language.md` — visual system and interaction rules.
+- `backend/main.py` — executable entrypoint.
+- `backend/src/panwatch/api/` — FastAPI app, dependencies, serializers, route modules.
+- `backend/src/panwatch/core/` — configuration, database, cryptographic secrets, calendars, time utilities.
+- `backend/src/panwatch/domain/` — ORM models, Pydantic schemas, and deterministic group/alert rules.
+- `backend/src/panwatch/services/` — market data, alert scanning, notifications, AI review, scheduling.
+- `backend/src/panwatch/providers/` — open-end fund data providers.
+- `backend/tests/` — backend tests.
+- `marketdata/` — standalone listed-market quote and daily-line package.
+- `frontend/src/panwatch/` — React app, components, pages, i18n, visual system.
+- `docs/` — architecture, design language, and English README.
+- `config/env.example` — environment example; copy to root `.env` when needed.
 
 ## Commands
 
@@ -43,31 +48,31 @@ make build
 make compose-up
 ```
 
-Direct checks:
+Direct verification:
 
 ```bash
-.venv/bin/python -m pytest tests/v2 -q
-cd frontend && pnpm check:i18n
-cd frontend && pnpm test
-cd frontend && pnpm build
+cd backend && ../.venv/bin/python -m pytest tests -q
+.venv/bin/python -m pytest marketdata/tests -q
+cd frontend && pnpm check:i18n && pnpm test && pnpm build
 docker compose config
 ```
 
-## Conventions
+## Engineering Rules
 
-- Python: Python 3.11+, PEP 8, type hints, `snake_case`.
-- TypeScript: React function components in PascalCase, utilities in camelCase.
-- New behavior requires a failing test first.
-- UI copy must go through `frontend/src/panwatch/i18n.ts`; `pnpm check:i18n` rejects CJK literals outside that file.
-- Market values must carry `as_of`, `source`, and `freshness`; never label estimated fund values as official net asset value.
-- Credentials are encrypted at rest and must never be returned in clear text.
-- Keep market data access behind the provider adapter so licensed sources can be added later.
+- Write a failing test before changing behavior.
+- Keep modules inside the layers listed above; never reintroduce a root-level `src/` or `server.py`.
+- Put every user-facing string in `frontend/src/panwatch/i18n.ts`.
+- Keep `pnpm check:i18n` clean.
+- Market values require `as_of`, `source`, and `freshness`.
+- Never label estimated fund values as official NAV.
+- Never return decrypted notification or AI credentials from an API.
+- Bind local services to `127.0.0.1` unless the user explicitly requests otherwise.
+- Keep runtime data under `DATA_DIR`; do not commit SQLite files or generated frontend output.
 
-## Product Boundaries
+## Product Constraints
 
-- Single user and single lightweight portfolio.
-- A-share ETFs only; no Hong Kong or US ETF support in v2.
-- Off-exchange funds are not continuously traded; estimates and official NAV must be visually distinct.
-- The default interface language is `zh-CN`.
-- Dark theme only in v2.
-- Keep the archived full-feature version at tag `archive/full-feature-2026-11`.
+- Default UI language is Chinese.
+- Dark theme only.
+- A-share listed ETFs only; no Hong Kong or US ETFs.
+- Open-end funds do not have continuous trading prices.
+- The daily review runs at 15:20 Asia/Shanghai on A-share trading days, with one retry.
