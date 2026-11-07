@@ -122,7 +122,7 @@ def fetch_raw(tencent_symbols: list[str]) -> list[dict]:
 
 class TencentQuoteVendor(QuoteVendor):
     name = "tencent"
-    supports_markets = {"CN", "HK", "US"}
+    supports_markets = frozenset({"CN", "HK", "US"})
 
     def fetch(self, symbols: list[Symbol], config: dict) -> list[Quote]:
         if not symbols:

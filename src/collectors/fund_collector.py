@@ -9,8 +9,6 @@ from datetime import datetime
 
 import httpx
 
-from src.core.marketdata_client import md_quote_rows
-
 FUND_HOLDINGS_URL = "https://fundf10.eastmoney.com/FundArchivesDatas.aspx"
 FUND_DETAIL_URL = "https://fund.eastmoney.com/pingzhongdata/{code}.js"
 _TAG_RE = re.compile(r"<[^>]+>")
@@ -107,7 +105,7 @@ def fetch_fund_top_holdings(fund_code: str, topline: int = 10) -> list[dict]:
     # 获取 A 股行情
     if cn_codes:
         try:
-            rows = md_quote_rows(cn_codes, "CN")
+            rows = _quote_rows(cn_codes, "CN")
             for r in rows:
                 quote_map[str(r.get("symbol") or "")] = r
         except Exception:
@@ -116,7 +114,7 @@ def fetch_fund_top_holdings(fund_code: str, topline: int = 10) -> list[dict]:
     # 获取港股行情
     if hk_codes:
         try:
-            rows = md_quote_rows(hk_codes, "HK")
+            rows = _quote_rows(hk_codes, "HK")
             for r in rows:
                 quote_map[str(r.get("symbol") or "")] = r
         except Exception:
@@ -129,6 +127,21 @@ def fetch_fund_top_holdings(fund_code: str, topline: int = 10) -> list[dict]:
             item["change_pct"] = q.get("change_pct")
 
     return result
+
+
+def _quote_rows(symbols: list[str], market: str) -> list[dict]:
+    from src.panwatch.marketdata import get_v2_market_data
+
+    return [
+        {
+            "symbol": quote.symbol,
+            "name": quote.name,
+            "current_price": quote.current_price,
+            "change_pct": quote.change_pct,
+            "prev_close": quote.prev_close,
+        }
+        for quote in get_v2_market_data().quotes(symbols, market=market)
+    ]
 
 
 def _downsample(points: list[dict], max_points: int = 180) -> list[dict]:

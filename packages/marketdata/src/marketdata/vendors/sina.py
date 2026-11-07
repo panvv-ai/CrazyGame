@@ -85,7 +85,7 @@ def _parse_hk_line(code: str, content: str) -> Quote | None:
 
 class SinaQuoteVendor(QuoteVendor):
     name = "sina"
-    supports_markets = {"US", "HK"}
+    supports_markets = frozenset({"US", "HK"})
 
     def fetch(self, symbols: list[Symbol], config: dict) -> list[Quote]:
         if not symbols:

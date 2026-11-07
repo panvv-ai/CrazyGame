@@ -1,4 +1,4 @@
-from marketdata.types import Request, Quote, Response
+from marketdata.types import Quote, Request, Response
 
 
 def test_request_cache_key_stable():

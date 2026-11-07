@@ -96,7 +96,7 @@ def _parse_one(data: dict | None, market: str, fallback_code: str) -> Quote | No
 
 class EastmoneyQuoteVendor(QuoteVendor):
     name = "eastmoney"
-    supports_markets = {"CN"}
+    supports_markets = frozenset({"CN"})
 
     def fetch(self, symbols: list[Symbol], config: dict) -> list[Quote]:
         if not symbols:
