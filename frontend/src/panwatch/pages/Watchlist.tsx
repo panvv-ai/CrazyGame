@@ -1,0 +1,266 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { BellRing, LineChart as LineChartIcon, Plus, Search, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+
+import { api } from '../api'
+import { DataState } from '../components/DataState'
+import { LineChart } from '../components/LineChart'
+import {
+  Badge,
+  Button,
+  EmptyState,
+  GlassPanel,
+  Input,
+  Loading,
+  Modal,
+  PageHeader,
+} from '../components/ui'
+import { changeClass, formatPercent } from '../lib'
+import type { Instrument, WatchlistItem, WatchlistKind } from '../types'
+
+export function WatchlistPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [kind, setKind] = useState<WatchlistKind>('stock')
+  const [items, setItems] = useState<WatchlistItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<Instrument[]>([])
+  const [searching, setSearching] = useState(false)
+  const [adding, setAdding] = useState('')
+  const [error, setError] = useState('')
+  const [chartItem, setChartItem] = useState<WatchlistItem | null>(null)
+  const [chartPoints, setChartPoints] = useState<Array<{ date: string; value: number }>>([])
+
+  async function load(showLoading = false) {
+    if (showLoading) setLoading(true)
+    try {
+      const response = await api.watchlistQuotes(kind)
+      setItems(response.items)
+      setError('')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t('common.unknownError'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    setItems([])
+    void load(true)
+  }, [kind])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void load()
+    }, 30_000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void load()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [kind])
+
+  useEffect(() => {
+    if (query.trim().length < 1) {
+      setResults([])
+      return
+    }
+    const timer = window.setTimeout(async () => {
+      setSearching(true)
+      try {
+        const payload = await api.search(query.trim())
+        setResults(
+          payload.items
+            .filter((item) =>
+              kind === 'stock'
+                ? item.asset_type === 'stock'
+                : item.asset_type !== 'stock'
+            )
+            .slice(0, 10)
+        )
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : t('common.unknownError'))
+      } finally {
+        setSearching(false)
+      }
+    }, 320)
+    return () => window.clearTimeout(timer)
+  }, [query, kind])
+
+  const existingSymbols = useMemo(
+    () => new Set(items.map((item) => `${item.market}:${item.symbol}:${item.asset_type}`)),
+    [items]
+  )
+
+  async function add(item: Instrument) {
+    const key = `${item.symbol}:${item.asset_type}`
+    setAdding(key)
+    try {
+      await api.addWatchlist({ ...item, kind })
+      setQuery('')
+      setResults([])
+      await load()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t('common.unknownError'))
+    } finally {
+      setAdding('')
+    }
+  }
+
+  async function remove(item: WatchlistItem) {
+    if (!window.confirm(t('watchlist.removeConfirm'))) return
+    await api.removeWatchlist(item.id)
+    await load()
+  }
+
+  async function showChart(item: WatchlistItem) {
+    setChartItem(item)
+    setChartPoints([])
+    const payload = await api.instrumentSeries(item.instrument_id, 365)
+    setChartPoints(payload.points)
+  }
+
+  return (
+    <>
+      <PageHeader
+        title={t('watchlist.title')}
+        subtitle={t('watchlist.subtitle')}
+        action={
+          <Button variant="secondary" onClick={() => document.getElementById('watch-search')?.focus()}>
+            <Plus size={16} />
+            {t('common.add')}
+          </Button>
+        }
+      />
+      <div className="segmented-control reveal">
+        <button className={kind === 'stock' ? 'active' : ''} onClick={() => setKind('stock')}>
+          {t('watchlist.stocks')}
+        </button>
+        <button className={kind === 'fund' ? 'active' : ''} onClick={() => setKind('fund')}>
+          {t('watchlist.funds')}
+        </button>
+      </div>
+
+      <GlassPanel className="search-panel reveal reveal-delay-1">
+        <div className="search-input-wrap">
+          <Search size={18} />
+          <Input
+            id="watch-search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t('common.search')}
+            autoComplete="off"
+          />
+        </div>
+        <p>{t('watchlist.addHint')}</p>
+        {searching ? <Loading /> : null}
+        {results.length ? (
+          <div className="search-results">
+            {results.map((item) => {
+              const key = `${item.market}:${item.symbol}:${item.asset_type}`
+              const exists = existingSymbols.has(key)
+              return (
+                <button
+                  key={key}
+                  className="search-result"
+                  disabled={exists || adding === `${item.symbol}:${item.asset_type}`}
+                  onClick={() => add(item)}
+                >
+                  <span>
+                    <strong>{item.name}</strong>
+                    <small>
+                      {item.symbol} · {t(`market.${item.market}`)} · {t(`asset.${item.asset_type}`)}
+                    </small>
+                  </span>
+                  <Badge tone={exists ? 'success' : 'accent'}>
+                    {exists ? '✓' : adding === `${item.symbol}:${item.asset_type}` ? '…' : '+'}
+                  </Badge>
+                </button>
+              )
+            })}
+          </div>
+        ) : null}
+      </GlassPanel>
+
+      {error ? <p className="form-error">{error}</p> : null}
+      {loading ? (
+        <Loading />
+      ) : items.length ? (
+        <div className="instrument-grid">
+          {items.map((item) => (
+            <GlassPanel
+              className="instrument-card reveal"
+              key={item.id}
+            >
+              <div className="instrument-card-head">
+                <div className="instrument-identity">
+                  <span className="market-monogram">{item.market.slice(0, 2)}</span>
+                  <span>
+                    <strong>{item.name}</strong>
+                    <small>
+                      {item.symbol} · {t(`asset.${item.asset_type}`)}
+                    </small>
+                  </span>
+                </div>
+                <DataState quote={item.quote} />
+              </div>
+              <div className="price-display">
+                <strong>{item.quote?.current_price?.toFixed(2) ?? '--'}</strong>
+                <span className={changeClass(item.quote?.change_pct)}>
+                  {formatPercent(item.quote?.change_pct)}
+                </span>
+              </div>
+              <div className="instrument-actions">
+                <button className="button button-ghost" onClick={() => showChart(item)}>
+                  <LineChartIcon size={15} />
+                  1Y
+                </button>
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate(`/alerts?instrument=${item.instrument_id}`)}
+                >
+                  <BellRing size={15} />
+                  {t('alerts.create')}
+                </Button>
+                <button className="icon-button danger" onClick={() => remove(item)} aria-label={t('common.delete')}>
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            </GlassPanel>
+          ))}
+        </div>
+      ) : (
+        <GlassPanel>
+          <EmptyState title={t(kind === 'stock' ? 'watchlist.emptyStock' : 'watchlist.emptyFund')} />
+        </GlassPanel>
+      )}
+      <Modal
+        open={Boolean(chartItem)}
+        title={chartItem ? `${chartItem.name} · ${chartItem.symbol}` : ''}
+        onClose={() => setChartItem(null)}
+      >
+        {chartPoints.length > 1 ? (
+          <LineChart
+            height={320}
+            series={[
+              {
+                id: `instrument-${chartItem?.instrument_id}`,
+                label: chartItem?.name ?? '',
+                color: '#8ea7ff',
+                points: chartPoints,
+              },
+            ]}
+          />
+        ) : (
+          <div className="chart-placeholder">{t('common.loading')}</div>
+        )}
+      </Modal>
+    </>
+  )
+}
+
