@@ -2,7 +2,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const root = fileURLToPath(new URL('../src/panwatch/', import.meta.url))
+const root = fileURLToPath(new URL('../src/crazygame/', import.meta.url))
 const checked = []
 
 async function walk(directory) {

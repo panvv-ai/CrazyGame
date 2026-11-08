@@ -2,7 +2,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import pytest
-from src.panwatch.domain.alerts import (
+from src.crazygame.domain.alerts import (
     AlertCondition,
     condition_matches,
     next_market_midnight,

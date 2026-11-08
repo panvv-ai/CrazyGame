@@ -1,5 +1,5 @@
-from src.panwatch.providers.fund_collector import fetch_fund_performance
-from src.panwatch.services.catalog import classify_search_item
+from src.crazygame.providers.fund_collector import fetch_fund_performance
+from src.crazygame.services.catalog import classify_search_item
 
 
 def test_classifies_a_share_stock():

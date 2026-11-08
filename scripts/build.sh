@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-image="${1:-panwatch}"
+image="${1:-crazygame}"
 
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 

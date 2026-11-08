@@ -1,7 +1,7 @@
 .PHONY: help setup dev-api dev-web test build compose-up compose-down
 
 help:
-	@echo "PanWatchDIY"
+	@echo "CrazyGame"
 	@echo "  make setup       Install Python and frontend dependencies"
 	@echo "  make dev-api     Run FastAPI on :8000"
 	@echo "  make dev-web     Run Vite on :5183"
@@ -16,7 +16,7 @@ setup:
 
 dev-api:
 	@if [ ! -x .venv/bin/python ]; then $(MAKE) setup; fi
-	cd backend && PANWATCH_RELOAD=1 ../.venv/bin/python main.py
+	cd backend && CRAZYGAME_RELOAD=1 ../.venv/bin/python main.py
 
 dev-web:
 	cd frontend && pnpm dev

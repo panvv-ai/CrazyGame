@@ -82,7 +82,7 @@ class StooqKlineVendor(KlineVendor):
             return []
         text = market_get(
             _STOOQ_URL, host_key="stooq.com", params={"s": f"{sym}.us", "i": "d"},
-            headers={"User-Agent": "PanWatch/1.0 (+https://github.com/)"},
+            headers={"User-Agent": "CrazyGame/1.0 (+https://github.com/)"},
             timeout=12, retries=2, parse="text", log_label="Stooq K线", symbol=sym,
         )
         if not text:

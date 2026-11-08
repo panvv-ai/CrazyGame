@@ -1,6 +1,6 @@
 {
-  "name": "PanWatch · 长期投资观察站",
-  "short_name": "PanWatch",
+  "name": "CrazyGame · 长期投资观察站",
+  "short_name": "CrazyGame",
   "description": "私有部署的股票、ETF 与基金长期投资观察站",
   "start_url": "/",
   "display": "standalone",

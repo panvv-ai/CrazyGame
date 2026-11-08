@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from src.panwatch.api.app import create_app
-from src.panwatch.core.config import AppConfig
+from src.crazygame.api.app import create_app
+from src.crazygame.core.config import AppConfig
 
 
 def test_business_routes_are_available_without_login(tmp_path: Path):

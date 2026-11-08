@@ -1,12 +1,12 @@
 from datetime import date
 from pathlib import Path
 
-from src.panwatch.core.config import AppConfig
-from src.panwatch.core.database import Base, build_engine, build_session_factory
-from src.panwatch.domain.models import AppSetting, DailyReview, Holding, Instrument
-from src.panwatch.services.ai import resolve_ai_client
-from src.panwatch.services.daily_review import DailyReviewService
-from src.panwatch.services.market import QuoteSnapshot
+from src.crazygame.core.config import AppConfig
+from src.crazygame.core.database import Base, build_engine, build_session_factory
+from src.crazygame.domain.models import AppSetting, DailyReview, Holding, Instrument
+from src.crazygame.services.ai import resolve_ai_client
+from src.crazygame.services.daily_review import DailyReviewService
+from src.crazygame.services.market import QuoteSnapshot
 
 
 class FakeQuotes:

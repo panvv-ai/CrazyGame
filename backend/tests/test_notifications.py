@@ -1,4 +1,4 @@
-from src.panwatch.services.notifications import (
+from src.crazygame.services.notifications import (
     build_aliyun_template_params,
     build_feishu_payload,
     render_alert_message,

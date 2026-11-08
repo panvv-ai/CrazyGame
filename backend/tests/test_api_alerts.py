@@ -2,10 +2,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from src.panwatch.api.app import create_app
-from src.panwatch.core.config import AppConfig
-from src.panwatch.services.alert_service import AlertScanner
-from src.panwatch.services.market import QuoteSnapshot
+from src.crazygame.api.app import create_app
+from src.crazygame.core.config import AppConfig
+from src.crazygame.services.alert_service import AlertScanner
+from src.crazygame.services.market import QuoteSnapshot
 
 
 class FakeQuotes:

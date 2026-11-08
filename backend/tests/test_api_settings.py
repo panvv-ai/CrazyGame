@@ -1,9 +1,9 @@
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from src.panwatch.api.app import create_app
-from src.panwatch.core.config import AppConfig
-from src.panwatch.domain.models import NotifyChannel
+from src.crazygame.api.app import create_app
+from src.crazygame.core.config import AppConfig
+from src.crazygame.domain.models import NotifyChannel
 
 
 def make_client(tmp_path: Path) -> TestClient:

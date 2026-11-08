@@ -15,7 +15,7 @@ FROM python:3.11-slim AS runtime
 ENV PYTHONUNBUFFERED=1 \
     DATA_DIR=/app/data \
     TZ=Asia/Shanghai \
-    PANWATCH_HOST=0.0.0.0 \
+    CRAZYGAME_HOST=0.0.0.0 \
     DOCKER=1
 
 WORKDIR /app

@@ -13,12 +13,12 @@ Read CodeGraph results as current, line-numbered source.
 
 ## Product
 
-PanWatch is a local, single-operator long-term market observatory.
+CrazyGame is a local, single-operator long-term market observatory.
 
 Keep this product loop narrow:
 
 ```text
-quotes -> watchlist -> weighted groups -> lightweight holdings -> alerts -> daily review
+quotes -> scoped watchlist -> scoped weighted groups -> lightweight holdings -> alerts -> daily review
 ```
 
 There is no user, login, registration, permission, paper-trading, strategy-research, or MCP subsystem. Do not add those back without an explicit product decision.
@@ -26,14 +26,14 @@ There is no user, login, registration, permission, paper-trading, strategy-resea
 ## Layout
 
 - `backend/main.py` — executable entrypoint.
-- `backend/src/panwatch/api/` — FastAPI app, dependencies, serializers, route modules.
-- `backend/src/panwatch/core/` — configuration, database, cryptographic secrets, calendars, time utilities.
-- `backend/src/panwatch/domain/` — ORM models, Pydantic schemas, and deterministic group/alert rules.
-- `backend/src/panwatch/services/` — market data, alert scanning, notifications, AI review, scheduling.
-- `backend/src/panwatch/providers/` — open-end fund data providers.
+- `backend/src/crazygame/api/` — FastAPI app, dependencies, serializers, route modules.
+- `backend/src/crazygame/core/` — configuration, database, cryptographic secrets, calendars, time utilities.
+- `backend/src/crazygame/domain/` — ORM models, Pydantic schemas, and deterministic group/alert rules.
+- `backend/src/crazygame/services/` — market data, alert scanning, notifications, AI review, scheduling.
+- `backend/src/crazygame/providers/` — open-end fund data providers.
 - `backend/tests/` — backend tests.
 - `marketdata/` — standalone listed-market quote and daily-line package.
-- `frontend/src/panwatch/` — React app, components, pages, i18n, visual system.
+- `frontend/src/crazygame/` — React app, components, pages, i18n, visual system.
 - `docs/` — architecture, design language, and English README.
 - `config/env.example` — environment example; copy to root `.env` when needed.
 
@@ -61,7 +61,7 @@ docker compose config
 
 - Write a failing test before changing behavior.
 - Keep modules inside the layers listed above; never reintroduce a root-level `src/` or `server.py`.
-- Put every user-facing string in `frontend/src/panwatch/i18n.ts`.
+- Put every user-facing string in `frontend/src/crazygame/i18n.ts`.
 - Keep `pnpm check:i18n` clean.
 - Market values require `as_of`, `source`, and `freshness`.
 - Never label estimated fund values as official NAV.
@@ -74,5 +74,8 @@ docker compose config
 - Default UI language is Chinese.
 - Dark theme only.
 - A-share listed ETFs only; no Hong Kong or US ETFs.
+- Stock tabs are separated into A-share, Hong Kong, and US views.
+- Fund tabs are separated into listed ETF and open-end fund views.
+- A group may contain only instruments from one scope; never allow mixed-market or mixed-fund groups.
 - Open-end funds do not have continuous trading prices.
 - The daily review runs at 15:20 Asia/Shanghai on A-share trading days, with one retry.

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from src.panwatch.core.timeutils import iso_utc
+from src.crazygame.core.timeutils import iso_utc
 
 
 def test_naive_database_time_is_serialized_as_utc():
