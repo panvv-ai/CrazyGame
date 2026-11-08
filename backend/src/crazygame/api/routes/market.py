@@ -19,6 +19,7 @@ from src.crazygame.domain.groups import (
     rebalanced_group_series,
     shared_group_scope,
 )
+from src.crazygame.domain.instruments import canonical_instrument_fields
 from src.crazygame.domain.models import (
     AssetGroup,
     GroupMember,
@@ -60,22 +61,26 @@ def _fetch_member_points(quote_service, members, *, days: int) -> dict[int, list
 
 def _upsert_instrument(db: Session, payload: WatchlistCreate) -> Instrument:
     """按 symbol、market、asset_type 获取或创建标准化标的。"""
+    market, asset_type, currency, quote_mode = canonical_instrument_fields(
+        payload.symbol,
+        payload.market,
+        payload.asset_type,
+    )
     instrument = db.scalar(
         select(Instrument).where(
             Instrument.symbol == payload.symbol,
-            Instrument.market == payload.market,
-            Instrument.asset_type == payload.asset_type,
+            Instrument.market == market,
+            Instrument.asset_type == asset_type,
         )
     )
     if instrument:
+        instrument.name = payload.name
         return instrument
-    currency = "HKD" if payload.market == "HK" else "USD" if payload.market == "US" else "CNY"
-    quote_mode = "estimated" if payload.asset_type == "open_end_fund" else "realtime"
     instrument = Instrument(
         symbol=payload.symbol,
         name=payload.name,
-        market=payload.market,
-        asset_type=payload.asset_type,
+        market=market,
+        asset_type=asset_type,
         currency=currency,
         quote_mode=quote_mode,
     )
@@ -221,17 +226,18 @@ def reorder_watchlist(payload: WatchlistOrder, db: Session = Depends(get_session
 @router.post("/watchlist", status_code=201)
 def add_watchlist(payload: WatchlistCreate, db: Session = Depends(get_session)):
     instrument = _upsert_instrument(db, payload)
+    kind = "fund" if instrument.asset_type != "stock" else "stock"
     item = db.scalar(
         select(WatchlistItem).where(
             WatchlistItem.instrument_id == instrument.id,
-            WatchlistItem.kind == payload.kind,
+            WatchlistItem.kind == kind,
         )
     )
     if item is None:
         current = db.scalars(select(WatchlistItem)).all()
         item = WatchlistItem(
             instrument_id=instrument.id,
-            kind=payload.kind,
+            kind=kind,
             sort_order=len(current),
         )
         db.add(item)

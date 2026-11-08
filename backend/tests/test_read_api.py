@@ -1,6 +1,7 @@
 from datetime import date
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 from src.crazygame.api.app import create_app
 from src.crazygame.core.config import AppConfig
@@ -183,6 +184,50 @@ def test_watchlist_reorder_moves_only_requested_items(
             "600519",
             "AAPL",
         ]
+
+
+@pytest.mark.parametrize(
+    ("symbol", "name"),
+    [
+        ("515070", "人工智能ETF华夏"),
+        ("588200", "科创芯片ETF嘉实"),
+    ],
+)
+def test_listed_etf_is_corrected_before_watchlist_and_holding_are_saved(
+    tmp_path: Path, monkeypatch, symbol, name
+):
+    with make_client(tmp_path, monkeypatch) as client:
+        item = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": symbol,
+                "name": name,
+                "market": "US",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        )
+
+        assert item.status_code == 201
+        saved = item.json()
+        assert saved["market"] == "CN"
+        assert saved["asset_type"] == "listed_etf"
+        assert saved["currency"] == "CNY"
+        assert saved["quote_mode"] == "realtime"
+        assert saved["kind"] == "fund"
+
+        client.put(
+            "/api/holdings",
+            json={
+                "instrument_id": saved["instrument_id"],
+                "quantity": 1000,
+                "average_cost": 1,
+            },
+        )
+        holding = client.get("/api/holdings").json()["items"][0]
+        assert holding["symbol"] == symbol
+        assert holding["market"] == "CN"
+        assert holding["asset_type"] == "listed_etf"
 
 
 def test_instrument_series_returns_normalized_line_points(tmp_path: Path, monkeypatch):

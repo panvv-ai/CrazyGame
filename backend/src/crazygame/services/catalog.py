@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 import httpx
 
+from src.crazygame.domain.instruments import is_mainland_listed_fund_code
+
 
 @dataclass(frozen=True)
 class InstrumentCandidate:
@@ -40,12 +42,29 @@ def classify_search_item(item: dict) -> InstrumentCandidate | None:
     """
     classify = str(item.get("Classify") or "").strip()
     security_type = str(item.get("SecurityTypeName") or "").strip()
+    market_type = str(item.get("MarketType") or "").strip()
+    quote_id = str(item.get("QuoteID") or "").strip()
     raw_code = str(item.get("Code") or "").strip()
     if not raw_code:
         return None
 
-    is_etf = classify.upper() == "ETF" or "ETF" in security_type.upper()
-    is_fund = classify in {"Fund", "ETF"} or "基金" in security_type
+    is_exchange_fund = (
+        classify == "Fund"
+        and (
+            market_type in {"1", "2"}
+            or quote_id.startswith(("0.", "1."))
+            or is_mainland_listed_fund_code(raw_code)
+        )
+    )
+    is_etf = (
+        classify.upper() == "ETF"
+        or "ETF" in security_type.upper()
+        or is_exchange_fund
+    )
+    is_fund = (
+        classify in {"Fund", "ETF", "OTCFUND"}
+        or "基金" in security_type
+    )
     if is_fund:
         if is_etf:
             return InstrumentCandidate(

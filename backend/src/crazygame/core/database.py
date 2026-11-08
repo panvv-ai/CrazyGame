@@ -6,6 +6,7 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from src.crazygame.core.config import AppConfig
+from src.crazygame.domain.instruments import is_mainland_listed_fund_code
 
 
 class Base(DeclarativeBase):
@@ -67,4 +68,45 @@ def ensure_schema(engine) -> None:
                     "ADD COLUMN context_json TEXT DEFAULT '{}'"
                 )
             )
+        listed_fund_ids = []
+        for instrument_id, symbol in connection.execute(
+            text("SELECT id, symbol FROM instruments")
+        ).fetchall():
+            if not is_mainland_listed_fund_code(symbol):
+                continue
+            connection.execute(
+                text(
+                    "UPDATE instruments "
+                    "SET market = 'CN', asset_type = 'listed_etf', "
+                    "currency = 'CNY', quote_mode = 'realtime' "
+                    "WHERE id = :instrument_id"
+                ),
+                {"instrument_id": instrument_id},
+            )
+            listed_fund_ids.append(instrument_id)
+
+        for instrument_id in listed_fund_ids:
+            has_fund_entry = connection.execute(
+                text(
+                    "SELECT 1 FROM watchlist_items "
+                    "WHERE instrument_id = :instrument_id AND kind = 'fund'"
+                ),
+                {"instrument_id": instrument_id},
+            ).first()
+            if has_fund_entry:
+                connection.execute(
+                    text(
+                        "DELETE FROM watchlist_items "
+                        "WHERE instrument_id = :instrument_id AND kind != 'fund'"
+                    ),
+                    {"instrument_id": instrument_id},
+                )
+            else:
+                connection.execute(
+                    text(
+                        "UPDATE watchlist_items SET kind = 'fund' "
+                        "WHERE instrument_id = :instrument_id"
+                    ),
+                    {"instrument_id": instrument_id},
+                )
 
