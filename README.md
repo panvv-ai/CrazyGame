@@ -75,6 +75,12 @@ docker compose ps
 
 打开 <http://127.0.0.1:8000>。
 
+默认构建 `crazygame:latest`。需要固定 tag 时：
+
+```bash
+CRAZYGAME_TAG=v1 docker compose up -d --build
+```
+
 查看日志：
 
 ```bash
@@ -123,17 +129,24 @@ cd backend && ../.venv/bin/python main.py
 
 ```bash
 cp config/env.example .env
-docker build -t crazygame .
+docker build --build-arg CRAZYGAME_TAG=v1 -t crazygame:v1 .
 docker run -d \
   --name crazygame \
   --restart unless-stopped \
   -p 127.0.0.1:8000:8000 \
   -v crazygame_data:/app/data \
   --env-file .env \
-  crazygame
+  crazygame:v1
 ```
 
 打开 <http://127.0.0.1:8000>。
+
+也可以使用统一构建脚本：
+
+```bash
+./scripts/build.sh v1
+# 产物：crazygame:v1
+```
 
 ## 使用方式
 
@@ -173,6 +186,7 @@ ${rule} ${name} ${price} ${change}
 | --- | --- | --- |
 | `DATA_DIR` | `./data` | SQLite 与本地密钥目录 |
 | `TZ` | `Asia/Shanghai` | 应用与调度时区 |
+| `CRAZYGAME_TAG` | `latest` | Compose 构建和使用的镜像 tag |
 | `CRAZYGAME_HOST` | `127.0.0.1` | 本地服务监听地址 |
 | `CRAZYGAME_PORT` | `8000` | 本地服务端口 |
 | `APP_SECRET_KEY` | 自动生成 | 加密 AI Key 和通知凭据 |
