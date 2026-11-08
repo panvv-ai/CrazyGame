@@ -16,11 +16,16 @@ from src.crazygame.services.daily_review import DailyReviewService
 
 
 def build_scheduler(app) -> AsyncIOScheduler:
+    """构建后台调度器，负责提醒轮询和每日持仓简报。
+
+    所有同步数据库与行情调用都放到线程中执行，避免阻塞 FastAPI 事件循环。
+    """
     config = app.state.config
     timezone = ZoneInfo(config.app_timezone)
     scheduler = AsyncIOScheduler(timezone=timezone)
 
     async def scan_alerts():
+        """定时扫描提醒并立即尝试投递新生成的消息。"""
         scanner = AlertScanner(
             session_factory=app.state.session_factory,
             quote_service=app.state.quote_service,
@@ -35,6 +40,7 @@ def build_scheduler(app) -> AsyncIOScheduler:
         await asyncio.to_thread(worker.drain)
 
     async def generate_daily_review():
+        """仅在 A 股交易日生成一次收盘后持仓简报，并发送到配置渠道。"""
         today = datetime.now(timezone).date()
         if not is_trading_day("CN", today):
             return
@@ -103,6 +109,7 @@ def build_scheduler(app) -> AsyncIOScheduler:
 
 
 def _notify_review(app, review_id: int) -> None:
+    """把已生成的每日简报投递到设置中选择的通知渠道。"""
     with app.state.session_factory() as db:
         review = db.get(DailyReview, review_id)
         settings = db.get(AppSetting, "daily_review")

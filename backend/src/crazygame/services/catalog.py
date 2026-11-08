@@ -7,6 +7,8 @@ import httpx
 
 @dataclass(frozen=True)
 class InstrumentCandidate:
+    """搜索接口返回并完成标准化后的候选标的。"""
+
     symbol: str
     name: str
     market: str
@@ -16,6 +18,7 @@ class InstrumentCandidate:
 
 
 def _normalize_symbol(raw: str, market: str) -> str:
+    """去除交易所前缀并统一港股、场外基金代码长度。"""
     code = raw.strip().upper()
     for prefix in ("SH", "SZ", "BJ", "US", "HK"):
         if code.startswith(prefix):
@@ -31,6 +34,10 @@ def _normalize_symbol(raw: str, market: str) -> str:
 
 
 def classify_search_item(item: dict) -> InstrumentCandidate | None:
+    """把东方财富搜索原始行分类为股票、场内 ETF 或场外基金。
+
+    无法可靠判断资产类型时返回 None，宁可少收录也不把错误类型写入自选。
+    """
     classify = str(item.get("Classify") or "").strip()
     security_type = str(item.get("SecurityTypeName") or "").strip()
     raw_code = str(item.get("Code") or "").strip()
@@ -103,6 +110,7 @@ def search_instruments(
     asset_type: str = "",
     limit: int = 20,
 ) -> list[InstrumentCandidate]:
+    """跨市场搜索标的，并按市场、资产类型过滤后去重。"""
     if not query.strip():
         return []
     response = httpx.get(

@@ -9,10 +9,15 @@ from src.crazygame.core.config import AppConfig
 
 
 class Base(DeclarativeBase):
-    pass
+    """所有 SQLAlchemy ORM 模型的声明式基类。"""
 
 
 def build_engine(config: AppConfig):
+    """根据配置创建数据库引擎，并为 SQLite 启用适合本地服务并发访问的参数。
+
+    WAL 允许读写并发，foreign_keys 保证级联删除有效，busy_timeout 避免短暂写锁
+    直接导致请求失败。
+    """
     url = config.resolved_database_url()
     connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
     engine = create_engine(url, connect_args=connect_args)
@@ -30,10 +35,12 @@ def build_engine(config: AppConfig):
 
 
 def build_session_factory(engine):
+    """创建会话工厂；提交后保留对象属性，便于路由层直接序列化 ORM 对象。"""
     return sessionmaker(bind=engine, expire_on_commit=False)
 
 
 def session_scope(factory: sessionmaker) -> Iterator[Session]:
+    """提供上下文式数据库会话，确保异常或提前退出时连接一定关闭。"""
     session = factory()
     try:
         yield session
@@ -42,6 +49,7 @@ def session_scope(factory: sessionmaker) -> Iterator[Session]:
 
 
 def ensure_schema(engine) -> None:
+    """创建缺失的数据表，并执行项目当前需要的轻量 SQLite 兼容迁移。"""
     Base.metadata.create_all(bind=engine)
     if not engine.url.get_backend_name().startswith("sqlite"):
         return

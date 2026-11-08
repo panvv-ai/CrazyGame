@@ -23,6 +23,7 @@ MARKET_SESSIONS = {
 
 
 def is_market_open(market: str, moment: datetime) -> bool:
+    """判断某市场在给定时刻是否处于常规交易时段，并处理半日市。"""
     market_code = market.upper()
     timezone = MARKET_TIMEZONES.get(market_code)
     if timezone is None:
@@ -43,6 +44,8 @@ def is_market_open(market: str, moment: datetime) -> bool:
 
 @dataclass(frozen=True)
 class QuoteSnapshot:
+    """统一后的行情快照，包含价格、涨跌、时间、来源和数据新鲜度。"""
+
     symbol: str
     name: str
     market: str
@@ -54,6 +57,7 @@ class QuoteSnapshot:
     freshness: str
 
     def as_dict(self) -> dict:
+        """转换为可 JSON 序列化的字典，供 API 和提醒模板复用。"""
         return {
             "symbol": self.symbol,
             "name": self.name,
@@ -68,7 +72,14 @@ class QuoteSnapshot:
 
 
 class MarketService:
+    """股票、ETF 与场外基金的统一行情服务。
+
+    该服务负责屏蔽不同数据源的差异，并把结果转换为前端稳定消费的
+    QuoteSnapshot 或日期价格点。
+    """
+
     def fetch_quotes(self, instruments: list[Instrument]) -> dict[tuple[str, str], QuoteSnapshot]:
+        """批量获取行情，并按 (symbol, market) 返回便于组合计算的映射。"""
         groups: dict[str, list[Instrument]] = {}
         for instrument in instruments:
             key = "FUND" if instrument.market == "FUND" else instrument.market
@@ -101,6 +112,7 @@ class MarketService:
         return output
 
     def _listed_quote(self, instrument: Instrument, quote) -> QuoteSnapshot:
+        """把上市交易标的的 marketdata Quote 转换为内部快照。"""
         timestamp = quote.timestamp
         if isinstance(timestamp, datetime):
             if timestamp.tzinfo is None:
@@ -123,6 +135,7 @@ class MarketService:
         )
 
     def _fund_quote(self, instrument: Instrument, row: dict) -> QuoteSnapshot:
+        """把场外基金实时估值或正式净值转换为内部快照。"""
         estimated = row.get("current_price") is not None
         current = _float(row.get("current_price"))
         previous = _float(row.get("prev_close"))
@@ -147,6 +160,7 @@ class MarketService:
         *,
         days: int = 365,
     ) -> list[tuple[date, float]]:
+        """获取指定标的在时间窗口内的日线/净值点，并按日期升序过滤。"""
         if instrument.asset_type == "open_end_fund":
             from src.crazygame.providers.fund_collector import fetch_fund_performance
 
@@ -180,6 +194,7 @@ class MarketService:
 
 
 def _float(value) -> float | None:
+    """把外部数据源可能返回的字符串或空值安全转换为 float。"""
     try:
         return float(value) if value is not None else None
     except (TypeError, ValueError):

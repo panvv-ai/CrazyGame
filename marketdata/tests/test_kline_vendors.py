@@ -23,3 +23,17 @@ def test_stooq_kline_parses(monkeypatch):
     monkeypatch.setattr(kv, "market_get", lambda *a, **k: csv)
     out = kv.StooqKlineVendor().fetch([Symbol.parse("AAPL")], {})
     assert len(out) == 2 and out[0].close == 3.0 and out[1].close == 5.0
+
+
+def test_stooq_kline_uses_short_single_attempt_timeout(monkeypatch):
+    captured = {}
+
+    def fake_market_get(*args, **kwargs):
+        captured.update(kwargs)
+        return ""
+
+    monkeypatch.setattr(kv, "market_get", fake_market_get)
+    kv.StooqKlineVendor().fetch([Symbol.parse("AAPL")], {})
+
+    assert captured["timeout"] <= 4
+    assert captured["retries"] == 0

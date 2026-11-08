@@ -42,6 +42,7 @@ def _extract_content_payload(raw: str) -> str:
 
 
 def fetch_fund_top_holdings(fund_code: str, topline: int = 10) -> list[dict]:
+    """抓取场外基金公开持仓，并补充持仓股票当日表现。"""
     params = {
         "type": "jjcc",
         "code": str(fund_code).strip(),
@@ -159,6 +160,7 @@ def _downsample(points: list[dict], max_points: int = 180) -> list[dict]:
 
 
 def fetch_fund_performance(fund_code: str) -> dict:
+    """抓取场外基金历史净值并降采样为适合前端曲线的数据点。"""
     with httpx.Client() as client:
         resp = client.get(FUND_DETAIL_URL.format(code=str(fund_code).strip()), timeout=15)
         raw = resp.text
