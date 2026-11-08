@@ -1,6 +1,7 @@
+import httpx
 import pytest
 from src.crazygame.providers.fund_collector import fetch_fund_performance
-from src.crazygame.services.catalog import classify_search_item
+from src.crazygame.services.catalog import classify_search_item, search_instruments
 
 
 def test_classifies_a_share_stock():
@@ -118,4 +119,43 @@ def test_classifies_hong_kong_stock():
 
 def test_fund_collector_is_self_contained():
     assert callable(fetch_fund_performance)
+
+
+def test_search_retries_transient_provider_failure(monkeypatch):
+    calls = 0
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "QuotationCodeTable": {
+                    "Data": [
+                        {
+                            "Code": "515070",
+                            "Name": "人工智能ETF华夏",
+                            "Classify": "Fund",
+                            "MarketType": "1",
+                            "SecurityTypeName": "基金",
+                            "QuoteID": "1.515070",
+                        }
+                    ]
+                }
+            }
+
+    def fake_get(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise httpx.ReadTimeout("temporary timeout")
+        return FakeResponse()
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+
+    items = search_instruments("515070")
+
+    assert calls == 2
+    assert len(items) == 1
+    assert items[0].asset_type == "listed_etf"
 

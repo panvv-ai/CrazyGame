@@ -80,6 +80,8 @@ const zh = {
     dragHint: '拖拽卡片调整顺序',
     viewDetails: '查看行情详情',
     detailUnavailable: '行情详情加载失败',
+    searchUnavailable: '搜索服务暂时不可用，请稍后重试',
+    noSearchResults: '当前筛选下没有找到匹配标的',
   },
   groups: {
     title: '加权组合',
@@ -275,6 +277,8 @@ const en = {
     dragHint: 'Drag cards to reorder',
     viewDetails: 'View quote details',
     detailUnavailable: 'Quote details failed to load',
+    searchUnavailable: 'Search is temporarily unavailable. Try again shortly.',
+    noSearchResults: 'No matching instruments in the current filter.',
   },
   groups: {
     title: 'Weighted groups',

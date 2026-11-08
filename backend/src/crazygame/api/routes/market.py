@@ -27,7 +27,10 @@ from src.crazygame.domain.models import (
     WatchlistItem,
 )
 from src.crazygame.domain.schemas import GroupCreate, WatchlistCreate, WatchlistOrder
-from src.crazygame.services.catalog import search_instruments
+from src.crazygame.services.catalog import (
+    InstrumentSearchUnavailable,
+    search_instruments,
+)
 
 router = APIRouter()
 public_router = APIRouter()
@@ -108,7 +111,10 @@ def instrument_search(
     asset_type: str = Query(default=""),
 ):
     """搜索并过滤可加入自选的股票、ETF 或场外基金。"""
-    items = search_instruments(q, market=market, asset_type=asset_type)
+    try:
+        items = search_instruments(q, market=market, asset_type=asset_type)
+    except InstrumentSearchUnavailable as error:
+        raise HTTPException(503, "instrument search unavailable") from error
     return {
         "items": [
             {

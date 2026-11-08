@@ -32,11 +32,17 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  search: (query: string, filters?: { market?: string; asset_type?: string }) => {
+  search: (
+    query: string,
+    filters?: { market?: string; asset_type?: string },
+    signal?: AbortSignal
+  ) => {
     const params = new URLSearchParams({ q: query })
     if (filters?.market) params.set('market', filters.market)
     if (filters?.asset_type) params.set('asset_type', filters.asset_type)
-    return request<{ items: Instrument[] }>(`/instruments/search?${params}`)
+    return request<{ items: Instrument[] }>(`/instruments/search?${params}`, {
+      signal,
+    })
   },
 
   watchlist: (kind?: WatchlistKind) =>

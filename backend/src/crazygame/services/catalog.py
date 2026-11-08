@@ -7,6 +7,10 @@ import httpx
 from src.crazygame.domain.instruments import is_mainland_listed_fund_code
 
 
+class InstrumentSearchUnavailable(RuntimeError):
+    """外部搜索源在重试后仍不可用时抛出的受控领域异常。"""
+
+
 @dataclass(frozen=True)
 class InstrumentCandidate:
     """搜索接口返回并完成标准化后的候选标的。"""
@@ -132,18 +136,34 @@ def search_instruments(
     """跨市场搜索标的，并按市场、资产类型过滤后去重。"""
     if not query.strip():
         return []
-    response = httpx.get(
-        "https://searchapi.eastmoney.com/api/suggest/get",
-        params={"input": query.strip(), "type": 14, "count": max(limit * 5, 20)},
-        headers={"User-Agent": "Mozilla/5.0"},
-        timeout=8,
-    )
-    response.raise_for_status()
-    rows = (
-        response.json()
-        .get("QuotationCodeTable", {})
-        .get("Data", [])
-    )
+    last_error: Exception | None = None
+    rows = []
+    for _attempt in range(2):
+        try:
+            response = httpx.get(
+                "https://searchapi.eastmoney.com/api/suggest/get",
+                params={
+                    "input": query.strip(),
+                    "type": 14,
+                    "count": max(limit * 5, 20),
+                },
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=8,
+            )
+            response.raise_for_status()
+            rows = (
+                response.json()
+                .get("QuotationCodeTable", {})
+                .get("Data", [])
+            )
+            break
+        except (httpx.HTTPError, ValueError) as error:
+            last_error = error
+    else:
+        raise InstrumentSearchUnavailable(
+            "instrument search source is unavailable"
+        ) from last_error
+
     output: list[InstrumentCandidate] = []
     seen: set[tuple[str, str, str]] = set()
     for row in rows:
