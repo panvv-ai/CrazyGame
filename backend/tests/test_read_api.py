@@ -131,6 +131,60 @@ def test_group_series_returns_line_points(tmp_path: Path, monkeypatch):
         assert response.json()["members"][0]["name"] == "贵州茅台"
 
 
+def test_watchlist_reorder_moves_only_requested_items(
+    tmp_path: Path, monkeypatch
+):
+    with make_client(tmp_path, monkeypatch) as client:
+        cn_first = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "600519",
+                "name": "贵州茅台",
+                "market": "CN",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        ).json()
+        cn_second = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "000001",
+                "name": "平安银行",
+                "market": "CN",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        ).json()
+        us_stock = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "AAPL",
+                "name": "Apple",
+                "market": "US",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        ).json()
+
+        response = client.put(
+            "/api/watchlist/order",
+            json={"kind": "stock", "item_ids": [cn_second["id"], cn_first["id"]]},
+        )
+
+        assert response.status_code == 200
+        assert [item["id"] for item in response.json()["items"]] == [
+            cn_second["id"],
+            cn_first["id"],
+            us_stock["id"],
+        ]
+        listed = client.get("/api/watchlist?kind=stock").json()["items"]
+        assert [item["symbol"] for item in listed] == [
+            "000001",
+            "600519",
+            "AAPL",
+        ]
+
+
 def test_instrument_series_returns_normalized_line_points(tmp_path: Path, monkeypatch):
     with make_client(tmp_path, monkeypatch) as client:
         item = client.post(

@@ -69,6 +69,7 @@ const zh = {
     emptyFund: '基金自选还是空的。',
     removeConfirm: '从自选中移除？',
     added: '已加入自选',
+    dragHint: '拖拽卡片调整顺序',
   },
   groups: {
     title: '加权组合',
@@ -253,6 +254,7 @@ const en = {
     emptyFund: 'Your fund watchlist is empty.',
     removeConfirm: 'Remove from watchlist?',
     added: 'Added to watchlist',
+    dragHint: 'Drag cards to reorder',
   },
   groups: {
     title: 'Weighted groups',

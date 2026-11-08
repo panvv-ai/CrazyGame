@@ -5,6 +5,7 @@ import {
   currencyTotals,
   formatPercent,
   instrumentScope,
+  moveItem,
   resolveInitialLanguage,
 } from './lib'
 
@@ -62,6 +63,22 @@ describe('instrumentScope', () => {
     expect(instrumentScope({ market: 'FUND', asset_type: 'open_end_fund' })).toBe(
       'fund_open_end'
     )
+  })
+})
+
+describe('moveItem', () => {
+  it('moves an item to the drop target position', () => {
+    const items = [{ id: 1 }, { id: 2 }, { id: 3 }]
+
+    expect(moveItem(items, 3, 1).map((item) => item.id)).toEqual([3, 1, 2])
+    expect(moveItem(items, 1, 3).map((item) => item.id)).toEqual([2, 1, 3])
+    expect(items.map((item) => item.id)).toEqual([1, 2, 3])
+  })
+
+  it('keeps the original order when source and target match', () => {
+    const items = [{ id: 1 }, { id: 2 }]
+
+    expect(moveItem(items, 2, 2)).toBe(items)
   })
 })
 
