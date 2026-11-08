@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-image="${1:-crazygame}"
+tag="${1:-latest}"
+image="crazygame:${tag}"
 
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -10,5 +11,5 @@ pnpm install --frozen-lockfile
 pnpm build
 cd "${project_root}"
 
-docker build -t "${image}:latest" .
-echo "Built ${image}:latest"
+docker build --build-arg CRAZYGAME_TAG="${tag}" -t "${image}" .
+echo "Built ${image}"

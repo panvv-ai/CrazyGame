@@ -12,6 +12,14 @@ RUN pnpm build
 
 FROM python:3.11-slim AS runtime
 
+ARG CRAZYGAME_TAG=latest
+
+LABEL org.opencontainers.image.title="CrazyGame" \
+      org.opencontainers.image.description="Local-first multi-market long-term investment observatory" \
+      org.opencontainers.image.source="https://github.com/panvv-ai/CrazyGame" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${CRAZYGAME_TAG}"
+
 ENV PYTHONUNBUFFERED=1 \
     DATA_DIR=/app/data \
     TZ=Asia/Shanghai \

@@ -1,13 +1,15 @@
 .PHONY: help setup dev-api dev-web test build compose-up compose-down
 
+TAG ?= latest
+
 help:
 	@echo "CrazyGame"
 	@echo "  make setup       Install Python and frontend dependencies"
 	@echo "  make dev-api     Run FastAPI on :8000"
 	@echo "  make dev-web     Run Vite on :5183"
 	@echo "  make test        Run backend and frontend tests"
-	@echo "  make build       Build frontend and Docker image"
-	@echo "  make compose-up  Build and start with Docker Compose"
+	@echo "  make build       Build crazygame:$(TAG)"
+	@echo "  make compose-up  Build and start with Docker Compose ($(TAG))"
 
 setup:
 	uv venv .venv --python 3.11
@@ -27,11 +29,10 @@ test:
 	cd frontend && pnpm test
 
 build:
-	cd frontend && pnpm build
-	docker compose build
+	./scripts/build.sh $(TAG)
 
 compose-up:
-	docker compose up -d --build
+	CRAZYGAME_TAG=$(TAG) docker compose up -d --build
 
 compose-down:
 	docker compose down

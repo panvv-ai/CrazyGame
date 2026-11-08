@@ -4,7 +4,9 @@ services:
   crazygame:
     build:
       context: .
-    image: crazygame
+      args:
+        CRAZYGAME_TAG: ${CRAZYGAME_TAG:-latest}
+    image: crazygame:${CRAZYGAME_TAG:-latest}
     restart: unless-stopped
     env_file:
       - path: .env

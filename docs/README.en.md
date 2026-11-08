@@ -65,6 +65,8 @@ docker compose ps
 
 Open <http://127.0.0.1:8000>. View logs with `docker compose logs -f crazygame` and stop with `docker compose down`.
 
+The default image is `crazygame:latest`. Override the tag with `CRAZYGAME_TAG=v1 docker compose up -d --build`.
+
 ### Local development
 
 ```bash
@@ -84,14 +86,14 @@ Open <http://127.0.0.1:5183>.
 
 ```bash
 cp config/env.example .env
-docker build -t crazygame .
+docker build --build-arg CRAZYGAME_TAG=v1 -t crazygame:v1 .
 docker run -d \
   --name crazygame \
   --restart unless-stopped \
   -p 127.0.0.1:8000:8000 \
   -v crazygame_data:/app/data \
   --env-file .env \
-  crazygame
+  crazygame:v1
 ```
 
 Open <http://127.0.0.1:8000>.
@@ -104,6 +106,7 @@ The service binds to loopback by default. `.env` is ignored by Git; keep real AP
 | --- | --- | --- |
 | `DATA_DIR` | `project/data` | SQLite and local key storage |
 | `TZ` | `Asia/Shanghai` | Application and scheduler timezone |
+| `CRAZYGAME_TAG` | `latest` | Compose image tag |
 | `CRAZYGAME_HOST` | `127.0.0.1` | Local bind address |
 | `CRAZYGAME_PORT` | `8000` | Local port |
 | `APP_SECRET_KEY` | generated locally | Encrypt AI and notification credentials |
