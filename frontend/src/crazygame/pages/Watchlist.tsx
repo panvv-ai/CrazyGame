@@ -85,22 +85,41 @@ export function WatchlistPage() {
   }, [kind, scope])
 
   useEffect(() => {
+    setSearching(false)
     if (query.trim().length < 1) {
       setResults([])
+      setError('')
       return
     }
+    const controller = new AbortController()
     const timer = window.setTimeout(async () => {
       setSearching(true)
+      setError('')
       try {
-        const payload = await api.search(query.trim(), searchFiltersForScope(scope))
+        const payload = await api.search(
+          query.trim(),
+          searchFiltersForScope(scope),
+          controller.signal
+        )
         setResults(payload.items.slice(0, 10))
       } catch (reason) {
-        setError(reason instanceof Error ? reason.message : t('common.unknownError'))
+        if (reason instanceof Error && reason.name === 'AbortError') return
+        const message =
+          reason instanceof Error ? reason.message : t('common.unknownError')
+        setResults([])
+        setError(
+          message === 'instrument search unavailable'
+            ? t('watchlist.searchUnavailable')
+            : message
+        )
       } finally {
-        setSearching(false)
+        if (!controller.signal.aborted) setSearching(false)
       }
     }, 320)
-    return () => window.clearTimeout(timer)
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
   }, [query, scope])
 
   const existingSymbols = useMemo(
@@ -147,8 +166,6 @@ export function WatchlistPage() {
   function switchKind(next: WatchlistKind) {
     setKind(next)
     setScope(defaultScope(next))
-    setQuery('')
-    setResults([])
   }
 
   const visibleScopes = scopesForKind(kind)
@@ -181,8 +198,6 @@ export function WatchlistPage() {
               className={scope === option.scope ? 'active' : ''}
               onClick={() => {
                 setScope(option.scope)
-                setQuery('')
-                setResults([])
               }}
             >
               {t(option.label)}
@@ -229,6 +244,8 @@ export function WatchlistPage() {
               )
             })}
           </div>
+        ) : !searching && query.trim() && !error ? (
+          <p className="muted-copy">{t('watchlist.noSearchResults')}</p>
         ) : null}
       </GlassPanel>
 

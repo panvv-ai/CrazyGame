@@ -5,7 +5,10 @@ import pytest
 from fastapi.testclient import TestClient
 from src.crazygame.api.app import create_app
 from src.crazygame.core.config import AppConfig
-from src.crazygame.services.catalog import InstrumentCandidate
+from src.crazygame.services.catalog import (
+    InstrumentCandidate,
+    InstrumentSearchUnavailable,
+)
 from src.crazygame.services.market import QuoteSnapshot
 
 
@@ -74,6 +77,23 @@ def test_instrument_search_returns_normalized_identity(tmp_path: Path, monkeypat
 
         assert response.status_code == 200
         assert response.json()["items"][0]["symbol"] == "600519"
+
+
+def test_instrument_search_provider_failure_is_not_reported_as_500(
+    tmp_path: Path, monkeypatch
+):
+    def unavailable(*args, **kwargs):
+        raise InstrumentSearchUnavailable("provider timed out")
+
+    with make_client(tmp_path, monkeypatch) as client:
+        monkeypatch.setattr(
+            "src.crazygame.api.routes.market.search_instruments",
+            unavailable,
+        )
+        response = client.get("/api/instruments/search?q=515070")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "instrument search unavailable"
 
 
 def test_version_endpoint_returns_release_version(tmp_path: Path, monkeypatch):
