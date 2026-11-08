@@ -19,18 +19,25 @@ from src.crazygame.services.senders import NotificationSender
 
 
 def _as_utc_naive(value: datetime) -> datetime:
+    """把带时区时间转换为数据库使用的 naive UTC。"""
     if value.tzinfo is None:
         return value
     return value.astimezone(timezone.utc).replace(tzinfo=None)
 
 
 class AlertScanner:
+    """提醒扫描器：读取启用规则、获取行情、判断条件并生成待投递消息。"""
+
     def __init__(self, session_factory, quote_service, secret_box):
         self.session_factory = session_factory
         self.quote_service = quote_service
         self.secret_box = secret_box
 
     def scan_once(self, *, now: datetime | None = None) -> dict:
+        """执行一次完整提醒扫描并返回触发与跳过数量。
+
+        now 可注入固定时间，便于测试交易时段、每日一次和冷却窗口逻辑。
+        """
         current = now or datetime.now(timezone.utc)
         with self.session_factory() as db:
             rules = db.scalars(
@@ -124,6 +131,7 @@ class AlertScanner:
 
     @staticmethod
     def _language(db) -> str:
+        """读取当前界面语言，供提醒标题和正文做双语渲染。"""
         from src.crazygame.domain.models import AppSetting
 
         setting = db.get(AppSetting, "language")
@@ -131,12 +139,15 @@ class AlertScanner:
 
 
 class DeliveryWorker:
+    """通知投递工作器：发送待处理消息，并维护指数退避重试状态。"""
+
     def __init__(self, session_factory, secret_box, sender=None):
         self.session_factory = session_factory
         self.secret_box = secret_box
         self.sender = sender or NotificationSender()
 
     def drain(self, limit: int = 20) -> dict:
+        """处理一批 pending/retry 消息，单条失败不会阻断后续投递。"""
         processed = 0
         with self.session_factory() as db:
             deliveries = db.scalars(

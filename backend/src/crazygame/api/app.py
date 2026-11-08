@@ -25,12 +25,18 @@ from src.crazygame.services.senders import NotificationSender
 
 
 def create_app(config: AppConfig | None = None) -> FastAPI:
+    """创建 CrazyGame FastAPI 应用并装配数据库、行情、AI、通知和路由。
+
+    config 可注入测试配置；生产环境默认从环境变量和本地数据目录构建。应用启动
+    时创建数据库结构并启动调度器，关闭时释放调度器与数据库连接。
+    """
     app_config = config or AppConfig()
     engine = build_engine(app_config)
     session_factory = build_session_factory(engine)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
+        """管理应用生命周期内的数据库初始化和后台任务。"""
         ensure_schema(engine)
         scheduler = None
         if app_config.enable_scheduler:

@@ -6,12 +6,15 @@ import httpx
 
 
 class AIClient:
+    """最小化的 OpenAI 兼容 Chat Completions 客户端。"""
+
     def __init__(self, base_url: str, api_key: str, model: str):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
 
     def complete(self, messages: list[dict[str, str]]) -> str:
+        """发送对话消息并返回模型生成的纯文本内容。"""
         response = httpx.post(
             f"{self.base_url}/chat/completions",
             headers={
@@ -38,6 +41,7 @@ def resolve_ai_client(
     fallback_api_key: str,
     fallback_model: str,
 ):
+    """优先读取设置页保存的 AI 配置，缺失时回退到环境变量提供的默认值。"""
     from src.crazygame.domain.models import AppSetting
 
     base_url = fallback_base_url

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -30,7 +32,34 @@ router = APIRouter()
 public_router = APIRouter()
 
 
+def _fetch_member_points(quote_service, members, *, days: int) -> dict[int, list]:
+    """并发获取组合成员的历史曲线，避免单个外部行情源拖慢整组请求。"""
+    if not members:
+        return {}
+    max_workers = min(8, len(members))
+    with ThreadPoolExecutor(
+        max_workers=max_workers,
+        thread_name_prefix="group-series",
+    ) as executor:
+        futures = {
+            executor.submit(
+                quote_service.fetch_daily_points,
+                member.instrument,
+                days=days,
+            ): member.instrument_id
+            for member in members
+        }
+        output: dict[int, list] = {}
+        for future, instrument_id in futures.items():
+            try:
+                output[instrument_id] = future.result()
+            except Exception:
+                output[instrument_id] = []
+        return output
+
+
 def _upsert_instrument(db: Session, payload: WatchlistCreate) -> Instrument:
+    """按 symbol、market、asset_type 获取或创建标准化标的。"""
     instrument = db.scalar(
         select(Instrument).where(
             Instrument.symbol == payload.symbol,
@@ -57,11 +86,13 @@ def _upsert_instrument(db: Session, payload: WatchlistCreate) -> Instrument:
 
 @public_router.get("/health")
 def health():
+    """返回容器健康检查所需的轻量状态响应。"""
     return {"status": "ok", "database": "ok"}
 
 
 @public_router.get("/version")
 def version():
+    """返回后端当前版本号。"""
     return {"version": __version__}
 
 
@@ -71,6 +102,7 @@ def instrument_search(
     market: str = Query(default=""),
     asset_type: str = Query(default=""),
 ):
+    """搜索并过滤可加入自选的股票、ETF 或场外基金。"""
     items = search_instruments(q, market=market, asset_type=asset_type)
     return {
         "items": [
@@ -94,6 +126,7 @@ def instrument_series(
     days: int = Query(default=365, ge=7, le=3650),
     db: Session = Depends(get_session),
 ):
+    """返回单个标的的归一历史曲线，供自选项图表使用。"""
     instrument = db.get(Instrument, instrument_id)
     if instrument is None:
         raise HTTPException(404, "instrument not found")
@@ -114,6 +147,7 @@ def list_watchlist(
     kind: str = Query(default=""),
     db: Session = Depends(get_session),
 ):
+    """按股票/基金类型返回自选清单。"""
     query = select(WatchlistItem).order_by(
         WatchlistItem.sort_order.asc(), WatchlistItem.id.asc()
     )
@@ -129,6 +163,7 @@ def watchlist_quotes(
     kind: str = Query(default=""),
     db: Session = Depends(get_session),
 ):
+    """返回自选清单及其最新行情快照。"""
     query = select(WatchlistItem).order_by(
         WatchlistItem.sort_order.asc(), WatchlistItem.id.asc()
     )
@@ -193,6 +228,7 @@ def list_groups(db: Session = Depends(get_session)):
 
 @router.get("/groups/{group_id}/summary")
 def group_summary(group_id: int, request: Request, db: Session = Depends(get_session)):
+    """计算组合当日加权涨跌和行情覆盖率。"""
     group = db.get(AssetGroup, group_id)
     if group is None:
         raise HTTPException(404, "group not found")
@@ -226,15 +262,15 @@ def group_series(
     days: int = Query(default=365, ge=7, le=3650),
     db: Session = Depends(get_session),
 ):
+    """并发获取成员历史数据并生成组合归一曲线。"""
     group = db.get(AssetGroup, group_id)
     if group is None:
         raise HTTPException(404, "group not found")
-    member_points = {
-        member.instrument_id: request.app.state.quote_service.fetch_daily_points(
-            member.instrument, days=days
-        )
-        for member in group.members
-    }
+    member_points = _fetch_member_points(
+        request.app.state.quote_service,
+        group.members,
+        days=days,
+    )
     members = [
         GroupSeriesMember(
             instrument_id=member.instrument_id,
@@ -271,6 +307,7 @@ def group_series(
 
 @router.post("/groups", status_code=201)
 def create_group(payload: GroupCreate, db: Session = Depends(get_session)):
+    """创建分类组合；服务端校验全部成员属于同一市场或基金类型。"""
     instrument_ids = [member.instrument_id for member in payload.members]
     instruments = db.scalars(
         select(Instrument).where(Instrument.id.in_(instrument_ids))
@@ -296,6 +333,7 @@ def create_group(payload: GroupCreate, db: Session = Depends(get_session)):
 
 @router.put("/groups/{group_id}")
 def update_group(group_id: int, payload: GroupCreate, db: Session = Depends(get_session)):
+    """更新组合元数据和成员，并再次执行同一分类约束。"""
     group = db.get(AssetGroup, group_id)
     if group is None:
         raise HTTPException(404, "group not found")

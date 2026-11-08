@@ -52,16 +52,23 @@ export function OverviewPage() {
       const groups = await Promise.all(
         groupPayload.items.map((group) => api.groupSummary(group.id))
       ).then((items) => items.filter((group) => group.scope !== 'mixed'))
-      const groupSeries = groups[0]
-        ? (await api.groupSeries(groups[0].id, 365)).points
-        : []
       setData({
         watchlist: watchlist.items,
         groups,
         hits: hits.items.slice(0, 4),
         review: reviews.items[0] ?? null,
-        groupSeries,
+        groupSeries: [],
       })
+      if (groups[0]) {
+        api
+          .groupSeries(groups[0].id, 365)
+          .then((payload) => {
+            setData((current) =>
+              current ? { ...current, groupSeries: payload.points } : current
+            )
+          })
+          .catch(() => undefined)
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t('common.unknownError'))
     }

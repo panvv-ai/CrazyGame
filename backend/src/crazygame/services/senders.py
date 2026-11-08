@@ -17,6 +17,8 @@ from src.crazygame.services.notifications import (
 
 
 class NotificationSender:
+    """通知渠道分发器，负责飞书机器人发送和阿里云短信签名调用。"""
+
     def send(
         self,
         channel_type: str,
@@ -25,6 +27,7 @@ class NotificationSender:
         content: str,
         context: dict | None = None,
     ) -> bool:
+        """按渠道类型发送消息，成功返回 True，配置错误或上游拒绝时抛异常。"""
         if channel_type == "feishu":
             return self._send_feishu(config, title, content)
         if channel_type == "aliyun_sms":
@@ -32,6 +35,7 @@ class NotificationSender:
         raise ValueError(f"unsupported channel type: {channel_type}")
 
     def _send_feishu(self, config: dict, title: str, content: str) -> bool:
+        """发送飞书交互卡片，并按需添加时间戳签名。"""
         webhook_url = str(config.get("webhook_url") or "")
         if not webhook_url:
             raise ValueError("Feishu webhook_url is required")
@@ -65,6 +69,7 @@ class NotificationSender:
         content: str,
         context: dict,
     ) -> bool:
+        """调用阿里云 SendSms API，并根据上下文选择中英文模板。"""
         access_key_id = str(config.get("access_key_id") or "")
         access_key_secret = str(config.get("access_key_secret") or "")
         sign_name = str(config.get("sign_name") or "")
@@ -109,10 +114,12 @@ class NotificationSender:
 
 
 def _percent_encode(value: str) -> str:
+    """按阿里云 RPC 签名要求执行 RFC 3986 百分号编码。"""
     return urllib.parse.quote(str(value), safe="~")
 
 
 def _aliyun_signature(params: dict, access_key_secret: str) -> str:
+    """计算阿里云 RPC 请求的 HMAC-SHA1 签名。"""
     canonical = "&".join(
         f"{_percent_encode(key)}={_percent_encode(value)}"
         for key, value in sorted(params.items())
@@ -127,6 +134,7 @@ def _aliyun_signature(params: dict, access_key_secret: str) -> str:
 
 
 def _json_string(value: str) -> str:
+    """把字符串编码为保持中文可读性的 JSON。"""
     import json
 
     return json.dumps(value, ensure_ascii=False)

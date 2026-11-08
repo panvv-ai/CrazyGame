@@ -5,6 +5,7 @@ from src.crazygame.domain.models import AssetGroup, Instrument, WatchlistItem
 
 
 def instrument_dict(instrument: Instrument) -> dict:
+    """序列化标准化标的，字段与前端 Instrument 类型保持一致。"""
     return {
         "id": instrument.id,
         "symbol": instrument.symbol,
@@ -17,6 +18,7 @@ def instrument_dict(instrument: Instrument) -> dict:
 
 
 def watchlist_dict(item: WatchlistItem) -> dict:
+    """序列化自选项，并把标的身份字段展开到同一层级。"""
     return {
         "id": item.id,
         "instrument_id": item.instrument_id,
@@ -27,6 +29,7 @@ def watchlist_dict(item: WatchlistItem) -> dict:
 
 
 def group_dict(group: AssetGroup) -> dict:
+    """序列化组合、分类和归一后成员权重。"""
     weights = normalize_weights([member.weight for member in group.members])
     try:
         scope = shared_group_scope([member.instrument for member in group.members])
@@ -50,6 +53,7 @@ def group_dict(group: AssetGroup) -> dict:
 
 
 def normalize_member_points(points) -> list[dict]:
+    """把原始价格点转换为以首个有效值为 100 的归一序列。"""
     first = next((value for _, value in points if value > 0), None)
     if first is None:
         return []

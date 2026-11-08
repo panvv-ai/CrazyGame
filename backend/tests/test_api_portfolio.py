@@ -1,3 +1,6 @@
+import threading
+import time
+from datetime import date
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -22,6 +25,22 @@ class FakeQuoteService:
             )
             for instrument in instruments
         }
+
+
+class ConcurrentSeriesQuoteService(FakeQuoteService):
+    def __init__(self):
+        self._lock = threading.Lock()
+        self.active = 0
+        self.max_active = 0
+
+    def fetch_daily_points(self, instrument, *, days=365):
+        with self._lock:
+            self.active += 1
+            self.max_active = max(self.max_active, self.active)
+        time.sleep(0.05)
+        with self._lock:
+            self.active -= 1
+        return [(date(2026, 11, 6), 100.0), (date(2026, 11, 7), 101.0)]
 
 
 def make_client(tmp_path: Path) -> TestClient:
@@ -239,4 +258,45 @@ def test_group_update_rejects_mixed_members(tmp_path: Path):
 
         assert response.status_code == 422
         assert response.json()["detail"] == "group members must share one scope"
+
+
+def test_group_series_fetches_members_concurrently(tmp_path: Path):
+    with make_client(tmp_path) as client:
+        quote_service = ConcurrentSeriesQuoteService()
+        client.app.state.quote_service = quote_service
+        first = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "600519",
+                "name": "贵州茅台",
+                "market": "CN",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        ).json()
+        second = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "000001",
+                "name": "平安银行",
+                "market": "CN",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        ).json()
+        group = client.post(
+            "/api/groups",
+            json={
+                "name": "并发组合",
+                "members": [
+                    {"instrument_id": first["instrument_id"], "weight": 1},
+                    {"instrument_id": second["instrument_id"], "weight": 1},
+                ],
+            },
+        ).json()
+
+        response = client.get(f"/api/groups/{group['id']}/series?days=365")
+
+        assert response.status_code == 200
+        assert quote_service.max_active >= 2
 

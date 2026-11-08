@@ -73,6 +73,7 @@ def _parse_fund_gz_line(raw: str) -> dict | None:
 
 
 def _fetch_fund_quotes(symbols: list[str]) -> list[dict]:
+    """批量获取场外基金盘中估值；无估值时由调用方回退到正式净值。"""
     """批量获取基金实时估值（天天基金）。
 
     对于场外基金（没有实时估值），会回退到基金详情接口获取最新净值。

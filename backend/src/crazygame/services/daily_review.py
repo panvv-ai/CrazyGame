@@ -14,12 +14,19 @@ from src.crazygame.domain.models import (
 
 
 class DailyReviewService:
+    """生成每日持仓健康简报，并保证同一交易日成功结果只生成一次。"""
+
     def __init__(self, session_factory, quote_service, ai):
         self.session_factory = session_factory
         self.quote_service = quote_service
         self.ai = ai
 
     def generate(self, *, trade_date: date) -> dict:
+        """生成指定交易日的简报。
+
+        没有持仓时跳过；已有成功结果时直接复用；AI 异常会持久化为 failed，
+        供后续重试或界面展示。
+        """
         with self.session_factory() as db:
             existing = db.scalar(
                 select(DailyReview).where(

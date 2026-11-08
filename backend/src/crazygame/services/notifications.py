@@ -2,6 +2,7 @@ from __future__ import annotations
 
 
 def render_alert_message(rule_name: str, quote: dict, language: str) -> dict[str, str]:
+    """根据界面语言生成提醒标题与正文，并保留行情时间与新鲜度说明。"""
     english = language.startswith("en")
     name = quote.get("name") or quote.get("symbol") or ""
     symbol = quote.get("symbol") or ""
@@ -29,6 +30,7 @@ def render_alert_message(rule_name: str, quote: dict, language: str) -> dict[str
 
 
 def build_feishu_payload(title: str, body: str, url: str = "") -> dict:
+    """构造飞书交互卡片；有应用地址时附带可点击按钮。"""
     elements = [
         {
             "tag": "div",
@@ -63,6 +65,7 @@ def build_feishu_payload(title: str, body: str, url: str = "") -> dict:
 
 
 def build_aliyun_template_params(context: dict) -> dict[str, str]:
+    """把内部提醒上下文映射为阿里云短信模板变量。"""
     price = context.get("current_price")
     change = context.get("change_pct")
     return {

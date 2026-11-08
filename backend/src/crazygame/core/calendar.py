@@ -4,6 +4,7 @@ from datetime import date
 
 
 def _dates(start: str, end: str) -> frozenset[date]:
+    """把闭区间日期范围展开为日期集合，用于维护年度休市表。"""
     current = date.fromisoformat(start)
     last = date.fromisoformat(end)
     values: set[date] = set()
@@ -67,6 +68,10 @@ EARLY_CLOSES: dict[tuple[str, date], int] = {
 
 
 def is_trading_day(market: str, day: date) -> bool:
+    """判断指定市场在给定自然日是否开市。
+
+    当前覆盖 A 股、港股和美股：先排除周末，再排除维护的法定休市日。
+    """
     market_code = market.upper()
     if day.weekday() >= 5:
         return False
