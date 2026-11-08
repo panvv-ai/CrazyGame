@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { DataState } from '../components/DataState'
 import { LineChart } from '../components/LineChart'
+import { MarkdownReport } from '../components/MarkdownReport'
 import {
   Badge,
   Button,
@@ -243,16 +244,10 @@ export function OverviewPage() {
             </Badge>
           </div>
           {data.review ? (
-            <div className="review-excerpt">
-              {data.review.content
-                .replace(/[#*_>`-]/g, '')
-                .split('\n')
-                .filter(Boolean)
-                .slice(0, 6)
-                .map((line, index) => (
-                  <p key={`${line}-${index}`}>{line}</p>
-                ))}
-            </div>
+            <MarkdownReport
+              className="review-excerpt"
+              content={data.review.content}
+            />
           ) : (
             <div className="review-empty">
               <Sparkles size={24} />
@@ -304,7 +299,10 @@ export function OverviewPage() {
         title={data.review?.title || t('overview.dailyReview')}
         onClose={() => setReviewOpen(false)}
       >
-        <article className="review-full">{data.review?.content}</article>
+        <MarkdownReport
+          className="review-full"
+          content={data.review?.content ?? ''}
+        />
       </Modal>
     </>
   )

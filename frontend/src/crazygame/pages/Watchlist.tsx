@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BellRing, LineChart as LineChartIcon, Plus, Search, Trash2 } from 'lucide-react'
+import {
+  BellRing,
+  GripVertical,
+  LineChart as LineChartIcon,
+  Plus,
+  Search,
+  Trash2,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { api } from '../api'
@@ -20,6 +27,7 @@ import {
   changeClass,
   formatPercent,
   instrumentScope,
+  moveItem,
   type InstrumentScope,
 } from '../lib'
 import {
@@ -43,6 +51,8 @@ export function WatchlistPage() {
   const [error, setError] = useState('')
   const [chartItem, setChartItem] = useState<WatchlistItem | null>(null)
   const [chartPoints, setChartPoints] = useState<Array<{ date: string; value: number }>>([])
+  const [draggingId, setDraggingId] = useState<number | null>(null)
+  const [dragOverId, setDragOverId] = useState<number | null>(null)
 
   async function load(showLoading = false) {
     if (showLoading) setLoading(true)
@@ -126,6 +136,21 @@ export function WatchlistPage() {
     setChartPoints([])
     const payload = await api.instrumentSeries(item.instrument_id, 365)
     setChartPoints(payload.points)
+  }
+
+  async function reorder(sourceId: number, targetId: number) {
+    const nextItems = moveItem(items, sourceId, targetId)
+    if (nextItems === items) return
+    setItems(nextItems)
+    try {
+      await api.reorderWatchlist(
+        kind,
+        nextItems.map((item) => item.id)
+      )
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t('common.unknownError'))
+      await load()
+    }
   }
 
   function switchKind(next: WatchlistKind) {
@@ -222,45 +247,82 @@ export function WatchlistPage() {
       ) : items.length ? (
         <div className="instrument-grid">
           {items.map((item) => (
-            <GlassPanel
-              className="instrument-card reveal"
+            <div
+              className={[
+                'instrument-drag-shell',
+                draggingId === item.id ? 'dragging' : '',
+                dragOverId === item.id && draggingId !== item.id ? 'drag-over' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
               key={item.id}
+              draggable
+              title={t('watchlist.dragHint')}
+              onDragStart={(event) => {
+                setDraggingId(item.id)
+                event.dataTransfer.effectAllowed = 'move'
+                event.dataTransfer.setData('text/plain', String(item.id))
+              }}
+              onDragOver={(event) => {
+                event.preventDefault()
+                event.dataTransfer.dropEffect = 'move'
+                setDragOverId(item.id)
+              }}
+              onDrop={(event) => {
+                event.preventDefault()
+                const sourceId =
+                  Number(event.dataTransfer.getData('text/plain')) || draggingId
+                if (sourceId) void reorder(sourceId, item.id)
+                setDraggingId(null)
+                setDragOverId(null)
+              }}
+              onDragEnd={() => {
+                setDraggingId(null)
+                setDragOverId(null)
+              }}
             >
-              <div className="instrument-card-head">
-                <div className="instrument-identity">
-                  <span className="market-monogram">{item.market.slice(0, 2)}</span>
-                  <span>
-                    <strong>{item.name}</strong>
-                    <small>
-                      {item.symbol} · {t(`asset.${item.asset_type}`)}
-                    </small>
+              <GlassPanel className="instrument-card reveal">
+                <div className="instrument-card-head">
+                  <div className="instrument-identity">
+                    <span className="market-monogram">{item.market.slice(0, 2)}</span>
+                    <span>
+                      <strong>{item.name}</strong>
+                      <small>
+                        {item.symbol} · {t(`asset.${item.asset_type}`)}
+                      </small>
+                    </span>
+                  </div>
+                  <div className="instrument-card-tools">
+                    <DataState quote={item.quote} />
+                    <span className="drag-handle" aria-hidden="true">
+                      <GripVertical size={16} />
+                    </span>
+                  </div>
+                </div>
+                <div className="price-display">
+                  <strong>{item.quote?.current_price?.toFixed(2) ?? '--'}</strong>
+                  <span className={changeClass(item.quote?.change_pct)}>
+                    {formatPercent(item.quote?.change_pct)}
                   </span>
                 </div>
-                <DataState quote={item.quote} />
-              </div>
-              <div className="price-display">
-                <strong>{item.quote?.current_price?.toFixed(2) ?? '--'}</strong>
-                <span className={changeClass(item.quote?.change_pct)}>
-                  {formatPercent(item.quote?.change_pct)}
-                </span>
-              </div>
-              <div className="instrument-actions">
-                <button className="button button-ghost" onClick={() => showChart(item)}>
-                  <LineChartIcon size={15} />
-                  1Y
-                </button>
-                <Button
-                  variant="ghost"
-                  onClick={() => navigate(`/alerts?instrument=${item.instrument_id}`)}
-                >
-                  <BellRing size={15} />
-                  {t('alerts.create')}
-                </Button>
-                <button className="icon-button danger" onClick={() => remove(item)} aria-label={t('common.delete')}>
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            </GlassPanel>
+                <div className="instrument-actions">
+                  <button className="button button-ghost" onClick={() => showChart(item)}>
+                    <LineChartIcon size={15} />
+                    1Y
+                  </button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => navigate(`/alerts?instrument=${item.instrument_id}`)}
+                  >
+                    <BellRing size={15} />
+                    {t('alerts.create')}
+                  </Button>
+                  <button className="icon-button danger" onClick={() => remove(item)} aria-label={t('common.delete')}>
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </GlassPanel>
+            </div>
           ))}
         </div>
       ) : (

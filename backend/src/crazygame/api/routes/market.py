@@ -25,7 +25,7 @@ from src.crazygame.domain.models import (
     Instrument,
     WatchlistItem,
 )
-from src.crazygame.domain.schemas import GroupCreate, WatchlistCreate
+from src.crazygame.domain.schemas import GroupCreate, WatchlistCreate, WatchlistOrder
 from src.crazygame.services.catalog import search_instruments
 
 router = APIRouter()
@@ -186,6 +186,36 @@ def watchlist_quotes(
             for item in items
         ]
     }
+
+
+@router.put("/watchlist/order")
+def reorder_watchlist(payload: WatchlistOrder, db: Session = Depends(get_session)):
+    """持久化自选卡片顺序，并保留未参与本次拖拽项目的相对位置。
+
+    前端通常只提交当前市场 tab 中可见的卡片。实现会把这些卡片依次放回它们
+    原本占据的排序槽位，因此 A 股、港股、美股等不同 tab 的排序互不干扰。
+    """
+    rows = db.scalars(
+        select(WatchlistItem)
+        .where(WatchlistItem.kind == payload.kind)
+        .order_by(WatchlistItem.sort_order.asc(), WatchlistItem.id.asc())
+    ).all()
+    rows_by_id = {row.id: row for row in rows}
+    missing = [item_id for item_id in payload.item_ids if item_id not in rows_by_id]
+    if missing:
+        raise HTTPException(
+            404,
+            f"{payload.kind} watchlist items not found: {missing}",
+        )
+
+    slots = [index for index, row in enumerate(rows) if row.id in payload.item_ids]
+    reordered = [rows_by_id[item_id] for item_id in payload.item_ids]
+    for slot, row in zip(slots, reordered):
+        rows[slot] = row
+    for sort_order, row in enumerate(rows):
+        row.sort_order = sort_order
+    db.commit()
+    return {"items": [watchlist_dict(row) for row in rows]}
 
 
 @router.post("/watchlist", status_code=201)

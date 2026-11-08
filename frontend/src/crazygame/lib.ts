@@ -76,6 +76,22 @@ export function currencyTotals(
   return result
 }
 
+export function moveItem<T extends { id: number }>(
+  items: T[],
+  sourceId: number,
+  targetId: number
+): T[] {
+  if (sourceId === targetId) return items
+  const sourceIndex = items.findIndex((item) => item.id === sourceId)
+  const targetIndex = items.findIndex((item) => item.id === targetId)
+  if (sourceIndex < 0 || targetIndex < 0) return items
+  const next = [...items]
+  const [moved] = next.splice(sourceIndex, 1)
+  const insertionIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
+  next.splice(insertionIndex, 0, moved)
+  return next
+}
+
 export function freshnessLabelKey(freshness: string): string {
   if (freshness === 'estimated') return 'freshness.estimated'
   if (freshness === 'official_nav') return 'freshness.officialNav'

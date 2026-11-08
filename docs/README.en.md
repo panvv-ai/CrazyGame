@@ -33,7 +33,7 @@ There is no account, login, registration, or permission system. SQLite stores ap
 - One lightweight portfolio with native-currency totals.
 - Price and daily-change alerts with cooldown and market-hours gating.
 - Feishu bot and Alibaba Cloud SMS delivery with retry tracking.
-- Daily portfolio review after the A-share close.
+- Daily portfolio review after the A-share close, rendered as Markdown.
 - Chinese and English interfaces, with reports and alerts following the UI language.
 - Local and Docker Compose deployment.
 
@@ -99,6 +99,12 @@ docker run -d \
 Open <http://127.0.0.1:8000>.
 
 The service binds to loopback by default. `.env` is ignored by Git; keep real API keys out of `config/env.example`.
+
+## Usage
+
+In the Watchlist page, choose Stocks or Funds, then select A-shares, Hong Kong, US stocks, mainland-listed ETFs, or open-end funds. Search by symbol or name to add an instrument. Drag a card by its handle to reorder the current category.
+
+Holdings record actual quantities, average costs, and unrealized P/L. They are the only source used by the daily health review. Groups do not record real positions; they combine watched instruments with target weights so you can review a hypothetical basket and its long-term curve. If you only need to analyze real assets, you can ignore groups.
 
 ## Configuration
 

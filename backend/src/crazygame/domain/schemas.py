@@ -24,6 +24,22 @@ class WatchlistCreate(BaseModel):
         return self
 
 
+class WatchlistOrder(BaseModel):
+    """自选卡片排序请求，只调整指定类型中的卡片顺序。"""
+
+    kind: str
+    item_ids: list[int] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_values(self):
+        """确保请求不会把股票和基金自选混在同一次排序操作中。"""
+        if self.kind not in {"stock", "fund"}:
+            raise ValueError("watchlist kind must be stock or fund")
+        if len(self.item_ids) != len(set(self.item_ids)):
+            raise ValueError("watchlist item ids must be unique")
+        return self
+
+
 class GroupMemberPayload(BaseModel):
     instrument_id: int
     weight: float = Field(gt=0)

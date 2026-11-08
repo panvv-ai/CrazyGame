@@ -47,6 +47,11 @@ export const api = {
     }),
   removeWatchlist: (id: number) =>
     request<{ ok: boolean }>(`/watchlist/${id}`, { method: 'DELETE' }),
+  reorderWatchlist: (kind: WatchlistKind, itemIds: number[]) =>
+    request<{ items: WatchlistItem[] }>('/watchlist/order', {
+      method: 'PUT',
+      body: JSON.stringify({ kind, item_ids: itemIds }),
+    }),
   watchlistQuotes: (kind?: WatchlistKind) =>
     request<{ items: WatchlistItem[] }>(`/quotes${kind ? `?kind=${kind}` : ''}`),
   instrumentSeries: (id: number, days = 365) =>
