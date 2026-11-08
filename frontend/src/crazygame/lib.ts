@@ -76,6 +76,52 @@ export function currencyTotals(
   return result
 }
 
+export interface PortfolioCurrencySnapshot {
+  currency: string
+  dayChange: number | null
+  coverage: number
+  marketValue: number
+}
+
+export function portfolioCurrencySnapshots(
+  rows: Array<{
+    currency: string
+    market_value: number | null
+    quote?: { change_pct: number | null } | null
+  }>
+): PortfolioCurrencySnapshot[] {
+  const groups = new Map<
+    string,
+    { totalValue: number; availableValue: number; weightedChange: number }
+  >()
+  for (const row of rows) {
+    if (row.market_value === null || !Number.isFinite(row.market_value)) continue
+    const value = Math.max(0, row.market_value)
+    if (value === 0) continue
+    const current = groups.get(row.currency) ?? {
+      totalValue: 0,
+      availableValue: 0,
+      weightedChange: 0,
+    }
+    current.totalValue += value
+    if (row.quote?.change_pct !== null && row.quote?.change_pct !== undefined) {
+      current.availableValue += value
+      current.weightedChange += value * row.quote.change_pct
+    }
+    groups.set(row.currency, current)
+  }
+  return [...groups.entries()].map(([currency, value]) => ({
+    currency,
+    dayChange:
+      value.availableValue > 0
+        ? value.weightedChange / value.availableValue
+        : null,
+    coverage:
+      value.totalValue > 0 ? value.availableValue / value.totalValue : 0,
+    marketValue: value.totalValue,
+  }))
+}
+
 export function moveItem<T extends { id: number }>(
   items: T[],
   sourceId: number,
@@ -90,6 +136,37 @@ export function moveItem<T extends { id: number }>(
   const insertionIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
   next.splice(insertionIndex, 0, moved)
   return next
+}
+
+export function seriesViewState(
+  points: Array<{ date: string; value: number }>,
+  loading: boolean,
+  error: string
+): 'loading' | 'error' | 'empty' | 'ready' {
+  if (loading) return 'loading'
+  if (error) return 'error'
+  return points.length > 1 ? 'ready' : 'empty'
+}
+
+export function latestSeriesChange(
+  points: Array<{ date: string; value: number }>
+): number | null {
+  if (points.length < 2) return null
+  const previous = points[points.length - 2].value
+  const current = points[points.length - 1].value
+  if (!Number.isFinite(previous) || previous <= 0 || !Number.isFinite(current)) {
+    return null
+  }
+  const previousTime = Date.parse(`${points[points.length - 2].date}T00:00:00Z`)
+  const currentTime = Date.parse(`${points[points.length - 1].date}T00:00:00Z`)
+  if (
+    !Number.isFinite(previousTime) ||
+    !Number.isFinite(currentTime) ||
+    currentTime - previousTime > 5 * 24 * 60 * 60 * 1000
+  ) {
+    return null
+  }
+  return (current / previous - 1) * 100
 }
 
 export function freshnessLabelKey(freshness: string): string {

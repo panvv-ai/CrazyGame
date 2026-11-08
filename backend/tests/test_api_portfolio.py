@@ -43,6 +43,37 @@ class ConcurrentSeriesQuoteService(FakeQuoteService):
         return [(date(2026, 11, 6), 100.0), (date(2026, 11, 7), 101.0)]
 
 
+class CurrencySeriesQuoteService(FakeQuoteService):
+    def fetch_quotes(self, instruments):
+        prices = {
+            "600519": 100.0,
+            "000001": 200.0,
+            "AAPL": 50.0,
+        }
+        return {
+            (instrument.symbol, instrument.market): QuoteSnapshot(
+                symbol=instrument.symbol,
+                name=instrument.name,
+                market=instrument.market,
+                current_price=prices[instrument.symbol],
+                change_pct=1.0,
+                previous_close=prices[instrument.symbol] / 1.01,
+                as_of="2026-11-06T15:00:00+08:00",
+                source="fixture",
+                freshness="live",
+            )
+            for instrument in instruments
+        }
+
+    def fetch_daily_points(self, instrument, *, days=365):
+        histories = {
+            "600519": [(date(2026, 11, 5), 100.0), (date(2026, 11, 6), 110.0)],
+            "000001": [(date(2026, 11, 5), 200.0), (date(2026, 11, 6), 180.0)],
+            "AAPL": [(date(2026, 11, 5), 50.0), (date(2026, 11, 6), 55.0)],
+        }
+        return histories[instrument.symbol]
+
+
 def make_client(tmp_path: Path) -> TestClient:
     app = create_app(
         AppConfig(
@@ -299,4 +330,58 @@ def test_group_series_fetches_members_concurrently(tmp_path: Path):
 
         assert response.status_code == 200
         assert quote_service.max_active >= 2
+
+
+def test_holding_series_groups_currencies_and_uses_market_value_weights(
+    tmp_path: Path,
+):
+    with make_client(tmp_path) as client:
+        client.app.state.quote_service = CurrencySeriesQuoteService()
+        cn_first = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "600519",
+                "name": "贵州茅台",
+                "market": "CN",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        ).json()
+        cn_second = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "000001",
+                "name": "平安银行",
+                "market": "CN",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        ).json()
+        us_stock = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "AAPL",
+                "name": "Apple",
+                "market": "US",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        ).json()
+        for item in (cn_first, cn_second, us_stock):
+            client.put(
+                "/api/holdings",
+                json={
+                    "instrument_id": item["instrument_id"],
+                    "quantity": 1,
+                    "average_cost": 1,
+                },
+            )
+
+        response = client.get("/api/holdings/series?days=365")
+
+        assert response.status_code == 200
+        series = {item["currency"]: item["points"] for item in response.json()["series"]}
+        assert set(series) == {"CNY", "USD"}
+        assert series["CNY"][-1]["value"] == 96.6667
+        assert series["USD"][-1]["value"] == 110.0
 

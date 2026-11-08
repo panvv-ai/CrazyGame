@@ -127,7 +127,7 @@ def _fetch_fund_quotes(symbols: list[str]) -> list[dict]:
                             "current_price": None,  # 无实时估值
                             "prev_close": nav,  # 最新单位净值
                             "change": None,
-                            "change_pct": None,
+                            "change_pct": perf.get("latest_change_pct"),
                             "volume": None,
                             "amount": None,
                             "turnover_rate": None,

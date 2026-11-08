@@ -70,6 +70,11 @@ export interface GroupMemberPoint {
   points: Array<{ date: string; value: number }>
 }
 
+export interface PortfolioSeries {
+  currency: string
+  points: GroupPoint[]
+}
+
 export interface Holding extends Instrument {
   id: number
   instrument_id: number

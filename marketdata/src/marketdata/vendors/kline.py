@@ -143,13 +143,11 @@ def fetch_eastmoney_kline(secid: str, days: int) -> list[Bar]:
 
 class EastmoneyKlineVendor(KlineVendor):
     name = "eastmoney"
-    supports_markets = frozenset({"CN", "HK"})
+    supports_markets = frozenset({"CN", "HK", "US"})
 
     def fetch(self, symbols: list[Symbol], config: dict) -> list[Bar]:
         if not symbols:
             return []
         sym = symbols[0]
-        if sym.market not in (Market.CN, Market.HK):
-            return []
         days = _days(config)
         return fetch_eastmoney_kline(_em_secid(sym), days)

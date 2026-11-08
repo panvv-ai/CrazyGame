@@ -18,6 +18,32 @@ def test_eastmoney_kline_parses(monkeypatch):
     assert len(out) == 2 and out[1].high == 6.0
 
 
+def test_eastmoney_kline_supports_us_symbols(monkeypatch):
+    captured = {}
+    payload = {
+        "data": {
+            "klines": [
+                "2026-11-05,180,185,187,179,1000",
+                "2026-11-06,185,186.64,188,184,1200",
+            ]
+        }
+    }
+
+    def fake_market_get(*args, **kwargs):
+        captured.update(kwargs)
+        return payload
+
+    monkeypatch.setattr(kv, "market_get", fake_market_get)
+    vendor = kv.EastmoneyKlineVendor()
+
+    out = vendor.fetch([Symbol.parse("NVDA", market="US")], {"days": 365})
+
+    assert "US" in vendor.supports_markets
+    assert captured["params"]["secid"] == "105.NVDA"
+    assert len(out) == 2
+    assert out[-1].close == 186.64
+
+
 def test_stooq_kline_parses(monkeypatch):
     csv = "Date,Open,High,Low,Close,Volume\n2026-07-01,1,4,0.5,3,100\n2026-07-02,3,6,2,5,200\n"
     monkeypatch.setattr(kv, "market_get", lambda *a, **k: csv)

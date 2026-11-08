@@ -9,6 +9,7 @@ import type {
   Holding,
   Instrument,
   NotifyChannel,
+  PortfolioSeries,
   WatchlistItem,
   WatchlistKind,
 } from './types'
@@ -72,6 +73,8 @@ export const api = {
   removeGroup: (id: number) => request<{ ok: boolean }>(`/groups/${id}`, { method: 'DELETE' }),
 
   holdings: () => request<{ items: Holding[] }>('/holdings'),
+  holdingSeries: (days = 365) =>
+    request<{ series: PortfolioSeries[] }>(`/holdings/series?days=${days}`),
   upsertHolding: (payload: { instrument_id: number; quantity: number; average_cost: number; note: string }) =>
     request<{ ok: boolean; id: number }>('/holdings', {
       method: 'PUT',
