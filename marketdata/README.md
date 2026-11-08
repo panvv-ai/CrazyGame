@@ -1,6 +1,6 @@
 # marketdata
 
-Small, dependency-light market data engine used by PanWatchDIY.
+Small, dependency-light market data engine used by CrazyGame.
 
 ## Scope
 

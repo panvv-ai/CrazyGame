@@ -1,6 +1,6 @@
 from datetime import date
 
-from src.panwatch.core.calendar import is_trading_day
+from src.crazygame.core.calendar import is_trading_day
 
 
 def test_weekend_is_not_a_trading_day():

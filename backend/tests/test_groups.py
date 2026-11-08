@@ -1,7 +1,7 @@
 from datetime import date
 
 import pytest
-from src.panwatch.domain.groups import (
+from src.crazygame.domain.groups import (
     GroupSeriesMember,
     calculate_weighted_change,
     normalize_weights,

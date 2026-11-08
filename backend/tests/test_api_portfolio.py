@@ -1,9 +1,9 @@
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from src.panwatch.api.app import create_app
-from src.panwatch.core.config import AppConfig
-from src.panwatch.services.market import QuoteSnapshot
+from src.crazygame.api.app import create_app
+from src.crazygame.core.config import AppConfig
+from src.crazygame.services.market import QuoteSnapshot
 
 
 class FakeQuoteService:
@@ -82,9 +82,9 @@ def test_group_summary_uses_normalized_quote_changes(tmp_path: Path):
         second = client.post(
             "/api/watchlist",
             json={
-                "symbol": "00700",
-                "name": "腾讯控股",
-                "market": "HK",
+                "symbol": "000001",
+                "name": "平安银行",
+                "market": "CN",
                 "asset_type": "stock",
                 "kind": "stock",
             },
@@ -103,6 +103,140 @@ def test_group_summary_uses_normalized_quote_changes(tmp_path: Path):
         summary = client.get(f"/api/groups/{group['id']}/summary")
 
         assert summary.status_code == 200
+        assert group["scope"] == "stock_cn"
         assert summary.json()["day_change_pct"] == 10.0
         assert summary.json()["coverage"] == 1.0
+
+
+def test_group_rejects_members_from_different_markets(tmp_path: Path):
+    with make_client(tmp_path) as client:
+        cn_stock = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "600519",
+                "name": "贵州茅台",
+                "market": "CN",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        ).json()
+        us_stock = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "AAPL",
+                "name": "Apple",
+                "market": "US",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        ).json()
+
+        response = client.post(
+            "/api/groups",
+            json={
+                "name": "混合市场",
+                "members": [
+                    {"instrument_id": cn_stock["instrument_id"], "weight": 1},
+                    {"instrument_id": us_stock["instrument_id"], "weight": 1},
+                ],
+            },
+        )
+
+        assert response.status_code == 422
+        assert response.json()["detail"] == "group members must share one scope"
+
+
+def test_group_rejects_mixing_listed_and_open_end_funds(tmp_path: Path):
+    with make_client(tmp_path) as client:
+        listed_fund = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "510300",
+                "name": "沪深300ETF",
+                "market": "CN",
+                "asset_type": "listed_etf",
+                "kind": "fund",
+            },
+        ).json()
+        open_end_fund = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "110022",
+                "name": "易方达消费行业",
+                "market": "FUND",
+                "asset_type": "open_end_fund",
+                "kind": "fund",
+            },
+        ).json()
+
+        response = client.post(
+            "/api/groups",
+            json={
+                "name": "混合基金",
+                "members": [
+                    {"instrument_id": listed_fund["instrument_id"], "weight": 1},
+                    {"instrument_id": open_end_fund["instrument_id"], "weight": 1},
+                ],
+            },
+        )
+
+        assert response.status_code == 422
+        assert response.json()["detail"] == "group members must share one scope"
+
+
+def test_group_update_rejects_mixed_members(tmp_path: Path):
+    with make_client(tmp_path) as client:
+        initial_stock = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "600519",
+                "name": "贵州茅台",
+                "market": "CN",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        ).json()
+        cn_stock = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "000001",
+                "name": "平安银行",
+                "market": "CN",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        ).json()
+        us_stock = client.post(
+            "/api/watchlist",
+            json={
+                "symbol": "AAPL",
+                "name": "Apple",
+                "market": "US",
+                "asset_type": "stock",
+                "kind": "stock",
+            },
+        ).json()
+        group = client.post(
+            "/api/groups",
+            json={
+                "name": "A股组合",
+                "members": [
+                    {"instrument_id": initial_stock["instrument_id"], "weight": 1},
+                ],
+            },
+        ).json()
+
+        response = client.put(
+            f"/api/groups/{group['id']}",
+            json={
+                "name": "错误修改",
+                "members": [
+                    {"instrument_id": cn_stock["instrument_id"], "weight": 1},
+                    {"instrument_id": us_stock["instrument_id"], "weight": 1},
+                ],
+            },
+        )
+
+        assert response.status_code == 422
+        assert response.json()["detail"] == "group members must share one scope"
 

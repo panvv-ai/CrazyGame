@@ -1,7 +1,7 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from src.panwatch.services.market import is_market_open
+from src.crazygame.services.market import is_market_open
 
 
 def test_cn_market_is_open_during_morning_session():

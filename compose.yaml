@@ -1,8 +1,10 @@
+name: crazygame
+
 services:
-  panwatch:
+  crazygame:
     build:
       context: .
-    image: panwatch
+    image: crazygame
     restart: unless-stopped
     env_file:
       - path: .env
@@ -10,11 +12,11 @@ services:
     environment:
       DATA_DIR: /app/data
       TZ: Asia/Shanghai
-      PANWATCH_HOST: 0.0.0.0
+      CRAZYGAME_HOST: 0.0.0.0
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
-      - panwatch_data:/app/data
+      - crazygame_data:/app/data
     healthcheck:
       test:
         [
@@ -29,4 +31,5 @@ services:
       start_period: 10s
 
 volumes:
-  panwatch_data:
+  crazygame_data:
+    name: crazygame_data

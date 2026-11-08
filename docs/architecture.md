@@ -2,12 +2,12 @@
 
 ## Product boundary
 
-PanWatch is a local, single-operator market observation tool. It intentionally supports one workflow:
+CrazyGame is a local, single-operator market observation tool. It intentionally supports one workflow:
 
 ```text
 public market data
   -> instruments and watchlists
-  -> weighted groups
+  -> category-scoped weighted groups
   -> lightweight holdings
   -> price and daily-change alerts
   -> Feishu / Aliyun SMS delivery
@@ -24,7 +24,7 @@ backend/
 ├── requirements.txt
 ├── requirements-dev.txt
 ├── pyproject.toml
-├── src/panwatch/
+├── src/crazygame/
 │   ├── api/
 │   │   ├── app.py
 │   │   ├── dependencies.py
@@ -60,14 +60,14 @@ backend/
 ## Data model
 
 - `Instrument` is the normalized identity for stocks, listed ETFs, and open-end funds.
-- `WatchlistItem` keeps stock and fund watchlists separate.
-- `AssetGroup` and `GroupMember` store relative target weights; calculations normalize them.
+- `WatchlistItem` keeps stock and fund watchlists separate; the UI further separates A-share, Hong Kong, US, listed-fund, and open-end-fund views.
+- `AssetGroup` and `GroupMember` store relative target weights; calculations normalize them and reject members from different scopes.
 - `Holding` stores the single lightweight portfolio.
 - `AlertRule`, `AlertHit`, and `NotificationDelivery` implement alert evaluation and durable delivery.
 - `DailyReview` stores the once-per-day AI portfolio review.
 - `AppSetting` stores language, AI, and report settings.
 
-SQLite lives at `DATA_DIR/panwatch.sqlite3`.
+SQLite lives at `DATA_DIR/crazygame.sqlite3`.
 
 ## Market data
 
@@ -91,6 +91,8 @@ These endpoints are not licensed exchange feeds. The UI must never remove or hid
 
 ## Group calculation
 
+- Groups are scoped to exactly one of: A-share stock, Hong Kong stock, US stock, listed ETF, or open-end fund.
+- Creating or updating a group with mixed scopes returns HTTP 422.
 - User weights are relative and must be non-negative.
 - Weights are normalized at read time.
 - A group’s daily return is the normalized weighted sum of available member changes.
@@ -110,10 +112,11 @@ Successful review results are immutable for that trade date. A retry never re-ca
 ## Frontend layout
 
 ```text
-frontend/src/panwatch/
+frontend/src/crazygame/
 ├── App.tsx
 ├── api.ts
 ├── i18n.ts
+├── scopes.ts
 ├── components/
 ├── pages/
 ├── lib.ts
@@ -136,5 +139,5 @@ Settings is available from the header. The interface is dark-only and supports `
 - Local Python development: `127.0.0.1:8000`.
 - Local frontend development: `127.0.0.1:5183`, proxying `/api` to the backend.
 - Docker Compose publishes only to `127.0.0.1:8000`.
-- Runtime data is stored in `data/` locally or the `panwatch_data` Docker volume.
+- Runtime data is stored in `data/` locally or the `crazygame_data` Docker volume.
 

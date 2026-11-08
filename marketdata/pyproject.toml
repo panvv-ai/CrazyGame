@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "marketdata"
 version = "1.0.0"
-description = "PanWatch multi-market quotes and daily-line fallback engine"
+description = "CrazyGame multi-market quotes and daily-line fallback engine"
 requires-python = ">=3.10"
 dependencies = ["httpx>=0.24"]
 

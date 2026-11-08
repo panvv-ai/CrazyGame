@@ -1,4 +1,4 @@
-# PanWatch
+# CrazyGame
 
 **本地优先的多市场长期投资观察工具。**
 
@@ -13,7 +13,7 @@
   <a href="README.md">简体中文</a> | <a href="docs/README.en.md">English</a>
 </p>
 
-PanWatch 把股票、ETF 和场外基金收束到同一个本地观察站。你可以维护自选清单、用权重组合观察整体趋势、记录轻量持仓，并在价格或涨跌幅达到条件时通过飞书、短信收到提醒。
+CrazyGame 把股票、ETF 和场外基金收束到同一个本地观察站。你可以维护自选清单、用权重组合观察整体趋势、记录轻量持仓，并在价格或涨跌幅达到条件时通过飞书、短信收到提醒。
 
 应用采用本地单用户架构，没有账号、登录、注册或权限系统。SQLite 保存配置和业务状态，AI Key 与通知凭据加密存储。
 
@@ -23,12 +23,12 @@ PanWatch 把股票、ETF 和场外基金收束到同一个本地观察站。你�
 ## 产品功能
 
 <p align="center">
-  <img src="docs/images/dashboard.png" alt="PanWatch 首页，展示加权组合、自选行情与每日持仓简报" width="100%">
+  <img src="docs/images/dashboard.png" alt="CrazyGame 首页，展示加权组合、自选行情与每日持仓简报" width="100%">
 </p>
 
-- **多市场自选**：A 股、港股、美股股票与 A 股场内 ETF。
+- **分区自选**：股票按 A 股、港股、美股分开查看；基金按场内 ETF、场外基金分开查看。
 - **场外基金**：支持基金搜索、盘中估值、正式净值与历史净值曲线。
-- **加权组合**：目标权重自动归一，展示当日加权涨跌、覆盖率和归一曲线。
+- **分类组合**：组合只能包含同一分类的标的，目标权重自动归一，并展示当日加权涨跌、覆盖率和归一曲线。
 - **长期曲线**：支持 1 月、3 月、1 年、3 年、全部，组合可叠加最多 5 条成分线。
 - **轻量持仓**：单账户记录数量、平均成本、市值和浮动盈亏，并按币种汇总。
 - **智能提醒**：价格或当日涨跌幅阈值，支持每日一次、冷却时间和交易时段门控。
@@ -60,11 +60,40 @@ PanWatch 把股票、ETF 和场外基金收束到同一个本地观察站。你�
 - pnpm 10+
 - Docker Desktop（可选）
 
-### 本地启动
+### 方式一：Docker Compose（推荐）
 
 ```bash
-git clone https://github.com/panvv-ai/PanWatchDIY.git
-cd PanWatchDIY
+git clone https://github.com/panvv-ai/CrazyGame.git
+cd CrazyGame
+
+cp config/env.example .env
+# 可选：在 .env 中填写 AI 服务配置
+
+docker compose up -d --build
+docker compose ps
+```
+
+打开 <http://127.0.0.1:8000>。
+
+查看日志：
+
+```bash
+docker compose logs -f crazygame
+```
+
+停止服务：
+
+```bash
+docker compose down
+```
+
+容器只映射到本机回环地址，SQLite 与凭据密钥保存在 `crazygame_data` volume。根目录 `.env` 已被 Git 忽略，不要把真实 API Key 写进 `config/env.example`。
+
+### 方式二：本地开发
+
+```bash
+git clone https://github.com/panvv-ai/CrazyGame.git
+cd CrazyGame
 
 make setup
 make dev-api
@@ -83,38 +112,44 @@ make dev-web
 ```bash
 cd frontend && pnpm build
 cd ..
+mkdir -p backend/static
+cp -R frontend/dist/. backend/static/
 cd backend && ../.venv/bin/python main.py
 ```
 
 打开 <http://127.0.0.1:8000>。
 
-### Docker Compose
+### 手动构建 Docker 镜像
 
 ```bash
 cp config/env.example .env
-# 按需修改 AI 配置和 APP_SECRET_KEY
-docker compose up -d --build
+docker build -t crazygame .
+docker run -d \
+  --name crazygame \
+  --restart unless-stopped \
+  -p 127.0.0.1:8000:8000 \
+  -v crazygame_data:/app/data \
+  --env-file .env \
+  crazygame
 ```
 
 打开 <http://127.0.0.1:8000>。
 
-容器只映射到本机回环地址。SQLite 与凭据密钥保存在 `panwatch_data` volume。
-
 ## 使用方式
 
-### 1. 添加自选
+### 添加自选
 
-在“自选”页切换“股票”或“ETF 与基金”，搜索代码或名称后添加。港股代码会自动补足 5 位，场外基金代码补足 6 位。
+在“自选”页先选择“股票”或“基金”，再切换 A 股、港股、美股、场内 ETF、场外基金分类。搜索代码或名称后添加；港股代码会自动补足 5 位，场外基金代码补足 6 位。
 
-### 2. 创建加权组合
+### 添加分类组合
 
-在“组合”页选择自选标的并填写相对权重。例如 `30 / 25 / 20 / 15 / 10` 会被归一为 `30% / 25% / 20% / 15% / 10%`。权重不要求提前凑满 100%。
+在“组合”页选择与组合相同的分类后，从该分类的自选标的中填写相对权重。例如 `30 / 25 / 20 / 15 / 10` 会被归一为 `30% / 25% / 20% / 15% / 10%`。不同市场或不同基金类型不能混在同一个组合中。
 
-### 3. 记录持仓
+### 记录持仓
 
 在“持仓”页选择已有自选标的，填写数量和平均成本。多币种分别汇总，不进行隐含汇率换算。
 
-### 4. 设置提醒
+### 设置提醒
 
 在提醒表单中选择价格或涨跌幅条件、方向和阈值。飞书和阿里云短信需要在设置页先完成配置。
 
@@ -124,7 +159,7 @@ docker compose up -d --build
 ${rule} ${name} ${price} ${change}
 ```
 
-### 5. 查看每日健康简报
+### 查看每日健康简报
 
 服务在 A 股交易日 15:20 生成持仓健康简报。需要先在设置页配置 OpenAI 兼容的 AI 服务和模型。
 
@@ -132,12 +167,14 @@ ${rule} ${name} ${price} ${change}
 
 复制 [`config/env.example`](config/env.example) 为根目录 `.env`，或直接使用环境变量：
 
+`config/env.example` 只包含安全占位符；真实 API Key 请写入被 Git 忽略的 `.env`，或直接在设置页填写。应用会将凭据加密后保存到本地数据库。
+
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `DATA_DIR` | `./data` | SQLite 与本地密钥目录 |
 | `TZ` | `Asia/Shanghai` | 应用与调度时区 |
-| `PANWATCH_HOST` | `127.0.0.1` | 本地服务监听地址 |
-| `PANWATCH_PORT` | `8000` | 本地服务端口 |
+| `CRAZYGAME_HOST` | `127.0.0.1` | 本地服务监听地址 |
+| `CRAZYGAME_PORT` | `8000` | 本地服务端口 |
 | `APP_SECRET_KEY` | 自动生成 | 加密 AI Key 和通知凭据 |
 | `AI_BASE_URL` | `https://api.openai.com/v1` | OpenAI 兼容 API |
 | `AI_API_KEY` | 空 | AI API Key，也可在设置页填写 |
@@ -153,7 +190,7 @@ ${rule} ${name} ${price} ${change}
 │   ├── requirements.txt
 │   ├── requirements-dev.txt
 │   ├── pyproject.toml
-│   ├── src/panwatch/
+│   ├── src/crazygame/
 │   │   ├── api/          # FastAPI、依赖和路由
 │   │   ├── core/         # 配置、数据库、密钥、日历
 │   │   ├── domain/       # ORM、schema 和确定性业务规则
@@ -161,7 +198,7 @@ ${rule} ${name} ${price} ${change}
 │   │   └── services/     # 行情、提醒、通知、AI、调度
 │   └── tests/
 ├── frontend/
-│   ├── src/panwatch/     # React 页面、组件、i18n 和设计系统
+│   ├── src/crazygame/     # React 页面、组件、i18n 和设计系统
 │   └── public/
 ├── marketdata/           # 可复用股票/ETF 行情包
 ├── config/env.example
@@ -176,7 +213,7 @@ ${rule} ${name} ${price} ${change}
 
 ## 数据与隐私
 
-- 默认数据库：`DATA_DIR/panwatch.sqlite3`。
+- 默认数据库：`DATA_DIR/crazygame.sqlite3`。
 - 默认本地密钥：`DATA_DIR/.app-secret`，权限为 `0600`。
 - AI Key、飞书签名和阿里云 AccessKey 加密后写入 SQLite。
 - API 不会返回完整凭据，只返回掩码。
@@ -211,6 +248,6 @@ cd backend && ../.venv/bin/python -m pytest tests -q
 
 ## 开源协议
 
-Copyright © 2026 PanWatch contributors.
+Copyright © 2026 CrazyGame contributors.
 
 本项目采用 [MIT License](LICENSE)。

@@ -2,10 +2,10 @@ from datetime import date
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from src.panwatch.api.app import create_app
-from src.panwatch.core.config import AppConfig
-from src.panwatch.services.catalog import InstrumentCandidate
-from src.panwatch.services.market import QuoteSnapshot
+from src.crazygame.api.app import create_app
+from src.crazygame.core.config import AppConfig
+from src.crazygame.services.catalog import InstrumentCandidate
+from src.crazygame.services.market import QuoteSnapshot
 
 
 class FakeMarket:
@@ -61,7 +61,7 @@ def make_client(tmp_path: Path, monkeypatch) -> TestClient:
         ]
 
     monkeypatch.setattr(
-        "src.panwatch.api.routes.market.search_instruments",
+        "src.crazygame.api.routes.market.search_instruments",
         fake_search,
     )
     return TestClient(app)

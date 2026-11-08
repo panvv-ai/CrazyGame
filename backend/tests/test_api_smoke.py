@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from src.panwatch.api.app import create_app
-from src.panwatch.core.config import AppConfig
+from src.crazygame.api.app import create_app
+from src.crazygame.core.config import AppConfig
 
 
 def make_client(tmp_path: Path) -> TestClient:
@@ -30,11 +30,11 @@ def test_watchlist_and_group_crud_normalizes_weights(tmp_path: Path):
         second = client.post(
             "/api/watchlist",
             json={
-                "symbol": "510300",
-                "name": "沪深300ETF",
+                "symbol": "000001",
+                "name": "平安银行",
                 "market": "CN",
-                "asset_type": "listed_etf",
-                "kind": "fund",
+                "asset_type": "stock",
+                "kind": "stock",
             },
         )
 

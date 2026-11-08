@@ -1,4 +1,4 @@
-from src.panwatch.core.secrets import SecretBox, mask_config
+from src.crazygame.core.secrets import SecretBox, mask_config
 
 
 def test_secret_box_round_trips_without_plaintext_leak():

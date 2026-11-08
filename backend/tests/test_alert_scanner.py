@@ -1,17 +1,17 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
-from src.panwatch.core.config import AppConfig
-from src.panwatch.core.database import Base, build_engine, build_session_factory
-from src.panwatch.core.secrets import SecretBox
-from src.panwatch.domain.models import (
+from src.crazygame.core.config import AppConfig
+from src.crazygame.core.database import Base, build_engine, build_session_factory
+from src.crazygame.core.secrets import SecretBox
+from src.crazygame.domain.models import (
     AlertRule,
     Instrument,
     NotificationDelivery,
     NotifyChannel,
 )
-from src.panwatch.services.alert_service import AlertScanner, DeliveryWorker
-from src.panwatch.services.market import QuoteSnapshot
+from src.crazygame.services.alert_service import AlertScanner, DeliveryWorker
+from src.crazygame.services.market import QuoteSnapshot
 
 
 class FakeQuotes:
