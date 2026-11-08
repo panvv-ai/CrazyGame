@@ -159,6 +159,20 @@ def _downsample(points: list[dict], max_points: int = 180) -> list[dict]:
     return out
 
 
+def latest_point_change(points: list[dict]) -> float | None:
+    """计算原始净值序列中最近两个有效点之间的涨跌幅百分比。"""
+    if len(points) < 2:
+        return None
+    try:
+        previous = float(points[-2]["value"])
+        current = float(points[-1]["value"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if previous <= 0:
+        return None
+    return (current / previous - 1.0) * 100.0
+
+
 def fetch_fund_performance(fund_code: str) -> dict:
     """抓取场外基金历史净值并降采样为适合前端曲线的数据点。"""
     with httpx.Client() as client:
@@ -191,8 +205,10 @@ def fetch_fund_performance(fund_code: str) -> dict:
         except Exception:
             points = []
 
+    latest_change_pct = latest_point_change(points)
     points = _downsample(points, max_points=220)
     return {
         "points": points,
         "since_return_pct": since_return_pct,
+        "latest_change_pct": latest_change_pct,
     }

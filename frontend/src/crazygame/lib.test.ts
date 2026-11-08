@@ -5,8 +5,11 @@ import {
   currencyTotals,
   formatPercent,
   instrumentScope,
+  latestSeriesChange,
   moveItem,
+  portfolioCurrencySnapshots,
   resolveInitialLanguage,
+  seriesViewState,
 } from './lib'
 
 describe('resolveInitialLanguage', () => {
@@ -79,6 +82,113 @@ describe('moveItem', () => {
     const items = [{ id: 1 }, { id: 2 }]
 
     expect(moveItem(items, 2, 2)).toBe(items)
+  })
+})
+
+describe('portfolioCurrencySnapshots', () => {
+  it('weights today changes by market value inside each currency', () => {
+    expect(
+      portfolioCurrencySnapshots([
+        {
+          currency: 'CNY',
+          market_value: 100,
+          quote: { change_pct: 2 },
+        },
+        {
+          currency: 'CNY',
+          market_value: 300,
+          quote: { change_pct: -1 },
+        },
+        {
+          currency: 'USD',
+          market_value: 50,
+          quote: { change_pct: 4 },
+        },
+      ])
+    ).toEqual([
+      {
+        currency: 'CNY',
+        dayChange: -0.25,
+        coverage: 1,
+        marketValue: 400,
+      },
+      {
+        currency: 'USD',
+        dayChange: 4,
+        coverage: 1,
+        marketValue: 50,
+      },
+    ])
+  })
+
+  it('reports zero coverage when a holding has no usable quote', () => {
+    expect(
+      portfolioCurrencySnapshots([
+        {
+          currency: 'USD',
+          market_value: 120,
+          quote: null,
+        },
+      ])
+    ).toEqual([
+      {
+        currency: 'USD',
+        dayChange: null,
+        coverage: 0,
+        marketValue: 120,
+      },
+    ])
+  })
+})
+
+describe('seriesViewState', () => {
+  it('does not stay loading after an empty or failed request', () => {
+    expect(seriesViewState([], true, '')).toBe('loading')
+    expect(seriesViewState([], false, '')).toBe('empty')
+    expect(seriesViewState([], false, 'network failed')).toBe('error')
+  })
+
+  it('renders a chart once at least two points are available', () => {
+    expect(
+      seriesViewState(
+        [
+          { date: '2026-11-05', value: 100 },
+          { date: '2026-11-06', value: 101 },
+        ],
+        false,
+        ''
+      )
+    ).toBe('ready')
+  })
+})
+
+describe('latestSeriesChange', () => {
+  it('uses the latest two points when a quote has no daily change', () => {
+    expect(
+      latestSeriesChange([
+        { date: '2026-11-05', value: 100 },
+        { date: '2026-11-06', value: 102 },
+      ])
+    ).toBeCloseTo(2)
+  })
+
+  it('returns null when the series cannot produce a percentage', () => {
+    expect(latestSeriesChange([])).toBeNull()
+    expect(
+      latestSeriesChange([
+        { date: '2026-11-05', value: 0 },
+        { date: '2026-11-06', value: 1 },
+      ])
+    ).toBeNull()
+  })
+
+  it('ignores points that are too far apart to represent a daily move', () => {
+    expect(
+      latestSeriesChange([
+        { date: '2026-10-28', value: 100 },
+        { date: '2026-11-06', value: 92 },
+      ])
+    ).toBeNull()
   })
 })
 

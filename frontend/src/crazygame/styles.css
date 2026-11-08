@@ -452,6 +452,11 @@ strong {
   z-index: 1;
 }
 
+.hero-mode-switch {
+  margin-bottom: 22px;
+  background: rgba(5, 10, 23, 0.34);
+}
+
 .hero-copy h2 {
   margin: 14px 0 12px;
   font-size: clamp(34px, 4.7vw, 62px);
@@ -470,6 +475,16 @@ strong {
   justify-content: space-between;
   gap: 22px;
   margin-top: 40px;
+}
+
+.portfolio-day-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px;
+}
+
+.hero-empty-action {
+  margin-top: 28px;
 }
 
 .metric {
@@ -657,6 +672,44 @@ strong {
   color: var(--faint);
   font-size: 8px;
   white-space: nowrap;
+}
+
+.data-state-interactive {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.data-state-interactive:hover {
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.instrument-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.instrument-detail-meta > span {
+  font-size: 13px;
+}
+
+.instrument-detail-meta .data-state {
+  margin-left: auto;
+}
+
+.detail-state {
+  display: grid;
+  place-items: center;
+  min-height: 320px;
 }
 
 .badge {

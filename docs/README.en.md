@@ -1,6 +1,6 @@
 # CrazyGame
 
-**A local-first observatory for long-term multi-market investing.**
+**A local-first portfolio observatory with AI decision support.**
 
 <p align="center">
   <img alt="Python 3.11" src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white">
@@ -12,7 +12,7 @@
   <a href="../README.md">简体中文</a> | <a href="README.en.md">English</a>
 </p>
 
-CrazyGame brings stocks, ETFs, and open-end funds into one local workspace for watchlists, weighted groups, lightweight holdings, alerts, and a daily AI portfolio review.
+CrazyGame helps you follow only the stocks and funds you truly believe in, understand your real allocation and risk, and use AI to organize possible next steps. Data, alerts, and configuration stay local.
 
 There is no account, login, registration, or permission system. SQLite stores application state, while AI and notification credentials are encrypted at rest.
 
@@ -27,6 +27,7 @@ There is no account, login, registration, or permission system. SQLite stores ap
 
 - Separate stock tabs for A-shares, Hong Kong, and US markets.
 - Separate fund tabs for mainland-listed ETFs and open-end funds.
+- A holdings-first overview with market-value-weighted performance and an optional group view.
 - Open-end fund estimates, current NAV, and NAV history.
 - Category-scoped groups with automatic normalization and coverage reporting.
 - Monthly, quarterly, yearly, multi-year, and full-history line charts.

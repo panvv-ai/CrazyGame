@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { api } from '../api'
 import { DataState } from '../components/DataState'
-import { LineChart } from '../components/LineChart'
+import { InstrumentDetailModal } from '../components/InstrumentDetailModal'
 import {
   Badge,
   Button,
@@ -20,7 +20,6 @@ import {
   GlassPanel,
   Input,
   Loading,
-  Modal,
   PageHeader,
 } from '../components/ui'
 import {
@@ -50,7 +49,6 @@ export function WatchlistPage() {
   const [adding, setAdding] = useState('')
   const [error, setError] = useState('')
   const [chartItem, setChartItem] = useState<WatchlistItem | null>(null)
-  const [chartPoints, setChartPoints] = useState<Array<{ date: string; value: number }>>([])
   const [draggingId, setDraggingId] = useState<number | null>(null)
   const [dragOverId, setDragOverId] = useState<number | null>(null)
 
@@ -129,13 +127,6 @@ export function WatchlistPage() {
     if (!window.confirm(t('watchlist.removeConfirm'))) return
     await api.removeWatchlist(item.id)
     await load()
-  }
-
-  async function showChart(item: WatchlistItem) {
-    setChartItem(item)
-    setChartPoints([])
-    const payload = await api.instrumentSeries(item.instrument_id, 365)
-    setChartPoints(payload.points)
   }
 
   async function reorder(sourceId: number, targetId: number) {
@@ -306,7 +297,7 @@ export function WatchlistPage() {
                   </span>
                 </div>
                 <div className="instrument-actions">
-                  <button className="button button-ghost" onClick={() => showChart(item)}>
+                  <button className="button button-ghost" onClick={() => setChartItem(item)}>
                     <LineChartIcon size={15} />
                     1Y
                   </button>
@@ -330,27 +321,7 @@ export function WatchlistPage() {
           <EmptyState title={t(kind === 'stock' ? 'watchlist.emptyStock' : 'watchlist.emptyFund')} />
         </GlassPanel>
       )}
-      <Modal
-        open={Boolean(chartItem)}
-        title={chartItem ? `${chartItem.name} · ${chartItem.symbol}` : ''}
-        onClose={() => setChartItem(null)}
-      >
-        {chartPoints.length > 1 ? (
-          <LineChart
-            height={320}
-            series={[
-              {
-                id: `instrument-${chartItem?.instrument_id}`,
-                label: chartItem?.name ?? '',
-                color: '#8ea7ff',
-                points: chartPoints,
-              },
-            ]}
-          />
-        ) : (
-          <div className="chart-placeholder">{t('common.loading')}</div>
-        )}
-      </Modal>
+      <InstrumentDetailModal item={chartItem} onClose={() => setChartItem(null)} />
     </>
   )
 }

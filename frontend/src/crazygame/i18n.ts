@@ -6,7 +6,7 @@ import { resolveInitialLanguage, type Language } from './lib'
 const zh = {
   product: {
     name: 'CrazyGame',
-    tagline: '长期投资观察站',
+    tagline: '个人持仓观察站',
     disclaimer: '数据仅供个人决策参考，不构成投资建议。',
   },
   nav: {
@@ -41,8 +41,16 @@ const zh = {
   },
   overview: {
     eyebrow: 'MARKET OBSERVATORY',
-    greeting: '把噪音留在市场里',
-    subtitle: '关注长期趋势、资产配置与真正重要的价格变化。',
+    greeting: '只关注你真正认可的',
+    subtitle: '记录少量股票与基金，沿资产配置看清持仓风险，再让 AI 帮你整理调仓与买入思路。',
+    holdingsTab: '持仓',
+    groupsTab: '组合',
+    myHoldings: '我的持仓',
+    holdingCount: '{{count}} 只持仓 · 按当前市值加权',
+    noHoldings: '还没有记录持仓数据。',
+    addHolding: '记录第一笔持仓',
+    todayHolding: '今日持仓',
+    holdingCurve: '持仓曲线',
     groups: '重点组合',
     createGroup: '创建组合',
     watchlist: '自选脉搏',
@@ -70,6 +78,8 @@ const zh = {
     removeConfirm: '从自选中移除？',
     added: '已加入自选',
     dragHint: '拖拽卡片调整顺序',
+    viewDetails: '查看行情详情',
+    detailUnavailable: '行情详情加载失败',
   },
   groups: {
     title: '加权组合',
@@ -191,7 +201,7 @@ const zh = {
 const en = {
   product: {
     name: 'CrazyGame',
-    tagline: 'Long-term market observatory',
+    tagline: 'Personal portfolio observatory',
     disclaimer: 'For personal research only. Not investment advice.',
   },
   nav: {
@@ -226,8 +236,16 @@ const en = {
   },
   overview: {
     eyebrow: 'MARKET OBSERVATORY',
-    greeting: 'Leave the noise to the market',
-    subtitle: 'Track long-term trends, allocation, and the price moves that matter.',
+    greeting: 'Focus on the few that matter',
+    subtitle: 'Track the stocks and funds you believe in, understand your allocation, and let AI surface risks and possible next steps.',
+    holdingsTab: 'Holdings',
+    groupsTab: 'Groups',
+    myHoldings: 'My holdings',
+    holdingCount: 'Holdings: {{count}} · market-value weighted',
+    noHoldings: 'No holdings recorded yet.',
+    addHolding: 'Record your first holding',
+    todayHolding: 'Holdings today',
+    holdingCurve: 'Holdings curve',
     groups: 'Focus groups',
     createGroup: 'Create group',
     watchlist: 'Watchlist pulse',
@@ -255,6 +273,8 @@ const en = {
     removeConfirm: 'Remove from watchlist?',
     added: 'Added to watchlist',
     dragHint: 'Drag cards to reorder',
+    viewDetails: 'View quote details',
+    detailUnavailable: 'Quote details failed to load',
   },
   groups: {
     title: 'Weighted groups',

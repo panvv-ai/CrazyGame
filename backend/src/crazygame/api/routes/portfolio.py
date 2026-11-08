@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from concurrent.futures import ThreadPoolExecutor
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from src.crazygame.api.dependencies import get_session
 from src.crazygame.api.serializers import instrument_dict
+from src.crazygame.domain.groups import GroupSeriesMember, rebalanced_group_series
 from src.crazygame.domain.models import Holding, Instrument
 
 router = APIRouter()
@@ -47,6 +50,75 @@ def list_holdings(request: Request, db=Depends(get_session)):
             }
         )
     return {"items": items}
+
+
+@router.get("/series")
+def holding_series(
+    request: Request,
+    days: int = Query(default=365, ge=7, le=3650),
+    db=Depends(get_session),
+):
+    """按币种生成真实持仓的加权归一曲线。
+
+    权重使用当前市值；行情暂时不可用时回退到成本市值，避免整只持仓从图中消失。
+    不同币种不做隐含汇率换算，因此分别返回独立曲线。
+    """
+    holdings = db.scalars(select(Holding).order_by(Holding.id)).all()
+    if not holdings:
+        return {"series": []}
+    quote_service = request.app.state.quote_service
+    quotes = quote_service.fetch_quotes([row.instrument for row in holdings])
+
+    def fetch_history(holding: Holding):
+        try:
+            return holding.instrument_id, quote_service.fetch_daily_points(
+                holding.instrument,
+                days=days,
+            )
+        except Exception:
+            return holding.instrument_id, []
+
+    with ThreadPoolExecutor(
+        max_workers=min(8, len(holdings)),
+        thread_name_prefix="holding-series",
+    ) as executor:
+        histories = dict(executor.map(fetch_history, holdings))
+
+    grouped: dict[str, list[GroupSeriesMember]] = {}
+    for holding in holdings:
+        quote = quotes.get((holding.instrument.symbol, holding.instrument.market))
+        current_value = (
+            quote.current_price * holding.quantity
+            if quote and quote.current_price is not None
+            else holding.average_cost * holding.quantity
+        )
+        if current_value <= 0:
+            continue
+        grouped.setdefault(holding.instrument.currency, []).append(
+            GroupSeriesMember(
+                instrument_id=holding.instrument_id,
+                weight=current_value,
+                points=histories.get(holding.instrument_id, []),
+            )
+        )
+
+    output = []
+    for currency, members in sorted(grouped.items()):
+        points = rebalanced_group_series(members)
+        output.append(
+            {
+                "currency": currency,
+                "points": [
+                    {
+                        "date": point.date.isoformat(),
+                        "value": round(point.value, 4),
+                        "coverage": round(point.coverage, 4),
+                    }
+                    for point in points
+                ],
+            }
+        )
+    return {"series": output}
 
 
 @router.put("")
