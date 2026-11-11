@@ -52,7 +52,6 @@ There is no account, login, registration, or permission system. SQLite stores ap
 | Market data | Tencent, Sina, Eastmoney, Stooq |
 | Frontend | React 18, TypeScript, Vite, i18next |
 | Charts | lightweight-charts |
-| Tests | pytest, Vitest |
 
 ## Quick start
 
@@ -63,11 +62,10 @@ Requirements: Docker Desktop for the recommended setup, or Python 3.11, Node.js 
 ```bash
 git clone https://github.com/panvv-ai/CrazyGame.git
 cd CrazyGame
-cp config/env.example .env
 ./docker-start.sh v2
 ```
 
-The script creates `.env` when missing, pulls missing base images with retries, builds `crazygame:v2`, recreates the container, and waits for the health check.
+The script pulls missing base images with retries, builds `crazygame:v2`, recreates the container, and waits for the health check.
 
 Open <http://127.0.0.1:8000>.
 
@@ -114,7 +112,6 @@ Open <http://127.0.0.1:5183>.
 ### Build the image manually
 
 ```bash
-cp config/env.example .env
 docker build --build-arg CRAZYGAME_TAG=v2 -t crazygame:v2 .
 CRAZYGAME_TAG=v2 docker compose up -d --no-build --force-recreate
 ```
@@ -127,13 +124,12 @@ docker run -d \
   --restart unless-stopped \
   -p 127.0.0.1:8000:8000 \
   -v crazygame_data:/app/data \
-  --env-file .env \
   crazygame:v2
 ```
 
 Open <http://127.0.0.1:8000>.
 
-The service binds to loopback by default. `.env` is ignored by Git; keep real API keys out of `config/env.example`.
+The service binds to loopback by default.
 
 ## Usage
 
@@ -145,30 +141,18 @@ Open the AI workspace from the top bar to ask follow-up questions or generate a 
 
 ## Configuration
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `DATA_DIR` | `project/data` | SQLite and local key storage |
-| `TZ` | `Asia/Shanghai` | Application and scheduler timezone |
-| `CRAZYGAME_TAG` | `latest` | Compose image tag |
-| `CRAZYGAME_HOST` | `127.0.0.1` | Local bind address |
-| `CRAZYGAME_PORT` | `8000` | Local port |
-| `APP_SECRET_KEY` | generated locally | Encrypt AI and notification credentials |
-| `AI_BASE_URL` | OpenAI-compatible URL | AI endpoint |
-| `AI_API_KEY` | empty | AI key; can also be set in the UI |
-| `AI_MODEL` | `gpt-4.1-mini` | Model identifier |
-| `AI_VISION_MODEL` | empty | Optional vision model; inherits `AI_MODEL` when empty |
-| `NEWS_ENABLED` | `true` | Enables public news and announcement requests |
-| `NEWS_PROVIDER` | `eastmoney` | Free default, or optional `tavily` / `bocha` |
-| `NEWS_API_KEY` | empty | Optional enhanced-search key |
+CrazyGame does not ship an environment configuration file. It generates the encryption key under `DATA_DIR`, and all model, news, and notification settings are configured in the UI and stored encrypted in SQLite.
+
+`docker-start.sh` receives the image tag as an argument. If Docker Hub access is restricted, pass `CRAZYGAME_NODE_IMAGE` and `CRAZYGAME_PYTHON_IMAGE` for the current command only; no config file is required.
 
 ## Project layout
 
 ```text
-backend/       FastAPI app, domain, services, providers, tests
+backend/       FastAPI app, domain, services, providers
 frontend/      React UI, i18n, visual system
 marketdata/    reusable quote and daily-line package
-config/        environment example
 docs/          architecture, design language, English README
+docker-start.sh one-command build and deployment
 scripts/       build helper
 ```
 
@@ -184,14 +168,12 @@ See [architecture.md](architecture.md) and [design-language.md](design-language.
 - Screenshot bytes are sent to the configured vision model and are not persisted.
 - Do not expose the unauthenticated service directly to the public internet.
 
-## Development
+## Development and build
 
 ```bash
-make test
-
+make setup
 cd frontend
 pnpm check:i18n
-pnpm test
 pnpm build
 ```
 
