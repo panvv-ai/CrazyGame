@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -30,6 +30,12 @@ from src.crazygame.domain.schemas import GroupCreate, WatchlistCreate, Watchlist
 from src.crazygame.services.catalog import (
     InstrumentSearchUnavailable,
     search_instruments,
+)
+from src.crazygame.services.ai import resolve_runtime_ai_client
+from src.crazygame.services.ai_image import (
+    MAX_IMAGE_BYTES,
+    ImageRecognitionService,
+    ImageValidationError,
 )
 
 router = APIRouter()
@@ -128,6 +134,38 @@ def instrument_search(
             for item in items
         ]
     }
+
+
+@router.post("/instruments/recognize-image")
+def recognize_instruments_image(
+    request: Request,
+    file: UploadFile = File(...),
+):
+    """Extract stock/ETF candidates from an image without persisting them."""
+    mime_type = (file.content_type or "").split(";")[0].strip().lower()
+    data = file.file.read(MAX_IMAGE_BYTES + 1)
+    config = request.app.state.config
+    ai = resolve_runtime_ai_client(
+        session_factory=request.app.state.session_factory,
+        secret_box=request.app.state.secret_box,
+        fallback_base_url=config.ai_base_url,
+        fallback_api_key=config.ai_api_key,
+        fallback_model=config.ai_model,
+        fallback_vision_model=config.ai_vision_model,
+        runtime_client=request.app.state.ai,
+    )
+    if ai is None:
+        raise HTTPException(503, "AI service is not configured")
+    try:
+        items = ImageRecognitionService(
+            ai_client=ai,
+            search=search_instruments,
+        ).recognize(data, mime_type)
+    except ImageValidationError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, f"image recognition failed: {str(exc)[:160]}") from exc
+    return {"items": items}
 
 
 @router.get("/instruments/{instrument_id}/series")

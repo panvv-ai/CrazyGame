@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Orbit,
   Settings,
+  Sparkles,
   Star,
 } from 'lucide-react'
 
@@ -21,6 +22,11 @@ import { GroupsPage } from './pages/Groups'
 import { HoldingsPage } from './pages/Holdings'
 import { AlertsPage } from './pages/Alerts'
 import { SettingsPage } from './pages/Settings'
+import { Loading } from './components/ui'
+
+const AIPage = lazy(() =>
+  import('./pages/AI').then((module) => ({ default: module.AIPage }))
+)
 
 const nav = [
   { to: '/', icon: LayoutDashboard, key: 'nav.overview', end: true },
@@ -114,6 +120,14 @@ export default function App() {
           ))}
         </nav>
         <div className="topbar-actions">
+          <button
+            className="utility-button ai-launch-button"
+            onClick={() => navigate('/ai')}
+            aria-label={t('nav.ai')}
+          >
+            <Sparkles size={16} />
+            <span>{t('nav.ai')}</span>
+          </button>
           <LanguageButton onChanged={syncLanguage} />
           <button
             className="utility-button"
@@ -132,6 +146,14 @@ export default function App() {
           <Route path="/groups" element={<GroupsPage />} />
           <Route path="/holdings" element={<HoldingsPage />} />
           <Route path="/alerts" element={<AlertsPage />} />
+          <Route
+            path="/ai"
+            element={
+              <Suspense fallback={<Loading />}>
+                <AIPage />
+              </Suspense>
+            }
+          />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

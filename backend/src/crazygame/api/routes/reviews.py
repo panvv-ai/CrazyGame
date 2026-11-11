@@ -9,7 +9,7 @@ from sqlalchemy import select
 from src.crazygame.api.dependencies import get_session
 from src.crazygame.core.timeutils import iso_utc
 from src.crazygame.domain.models import DailyReview
-from src.crazygame.services.ai import resolve_ai_client
+from src.crazygame.services.ai import resolve_runtime_ai_client
 from src.crazygame.services.daily_review import DailyReviewService
 
 router = APIRouter()
@@ -49,13 +49,14 @@ def run_review(request: Request, trade_date: str | None = None):
     service = DailyReviewService(
         session_factory=request.app.state.session_factory,
         quote_service=request.app.state.quote_service,
-        ai=request.app.state.ai
-        or resolve_ai_client(
+        ai=resolve_runtime_ai_client(
             session_factory=request.app.state.session_factory,
             secret_box=request.app.state.secret_box,
             fallback_base_url=request.app.state.config.ai_base_url,
             fallback_api_key=request.app.state.config.ai_api_key,
             fallback_model=request.app.state.config.ai_model,
+            fallback_vision_model=request.app.state.config.ai_vision_model,
+            runtime_client=request.app.state.ai,
         ),
     )
     if service.ai is None:

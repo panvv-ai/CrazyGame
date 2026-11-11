@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from src.crazygame.core.calendar import is_trading_day
 from src.crazygame.domain.models import AppSetting, DailyReview, NotifyChannel, utc_now
-from src.crazygame.services.ai import resolve_ai_client
+from src.crazygame.services.ai import resolve_runtime_ai_client
 from src.crazygame.services.alert_service import AlertScanner, DeliveryWorker
 from src.crazygame.services.daily_review import DailyReviewService
 
@@ -53,12 +53,14 @@ def build_scheduler(app) -> AsyncIOScheduler:
                     enabled_config = {}
                 if enabled_config.get("enabled", True) is False:
                     return
-        ai = app.state.ai or resolve_ai_client(
+        ai = resolve_runtime_ai_client(
             session_factory=app.state.session_factory,
             secret_box=app.state.secret_box,
             fallback_base_url=config.ai_base_url,
             fallback_api_key=config.ai_api_key,
             fallback_model=config.ai_model,
+            fallback_vision_model=config.ai_vision_model,
+            runtime_client=app.state.ai,
         )
         if ai is None:
             return

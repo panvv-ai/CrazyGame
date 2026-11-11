@@ -121,6 +121,11 @@ export const api = {
   settings: () => request<AppSettings>('/settings'),
   updateSettings: (payload: AppSettings) =>
     request<AppSettings>('/settings', { method: 'PUT', body: JSON.stringify(payload) }),
+  testAICapabilities: () =>
+    request<{ json: boolean; tools: boolean; stream: boolean; vision: boolean }>(
+      '/settings/ai/test',
+      { method: 'POST' }
+    ),
 
   dailyReviews: () => request<{ items: DailyReview[] }>('/reviews/daily'),
   runDailyReview: () => request<{ status: string; id?: number }>('/reviews/daily/run', { method: 'POST' }),

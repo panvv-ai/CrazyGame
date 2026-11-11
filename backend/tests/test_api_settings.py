@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from src.crazygame.api.app import create_app
 from src.crazygame.core.config import AppConfig
-from src.crazygame.domain.models import NotifyChannel
+from src.crazygame.domain.models import AppSetting, NotifyChannel
 
 
 def make_client(tmp_path: Path) -> TestClient:
@@ -38,6 +38,41 @@ def test_settings_redact_ai_api_key(tmp_path: Path):
         assert loaded.json()["ai"]["api_key"] == "••••••••"
 
 
+def test_settings_persist_vision_model_and_redact_news_search_key(tmp_path: Path):
+    with make_client(tmp_path) as client:
+        saved = client.put(
+            "/api/settings",
+            json={
+                "language": "zh-CN",
+                "ai": {
+                    "base_url": "https://example.test/v1",
+                    "api_key": "main-secret",
+                    "model": "text-model",
+                    "vision_model": "vision-model",
+                },
+                "news": {
+                    "enabled": True,
+                    "provider": "bocha",
+                    "api_key": "search-secret",
+                },
+            },
+        )
+
+        assert saved.status_code == 200
+        assert saved.json()["ai"]["vision_model"] == "vision-model"
+        assert saved.json()["news"] == {
+            "enabled": True,
+            "provider": "bocha",
+            "api_key": "••••••••",
+        }
+        with client.app.state.session_factory() as db:
+            saved_settings = {
+                row.key: row.value
+                for row in db.query(AppSetting).all()
+            }
+        assert "search-secret" not in saved_settings["news"]
+
+
 def test_channel_secret_is_encrypted_at_rest_and_masked(tmp_path: Path):
     with make_client(tmp_path) as client:
         response = client.post(
@@ -62,4 +97,26 @@ def test_channel_secret_is_encrypted_at_rest_and_masked(tmp_path: Path):
             row = db.query(NotifyChannel).one()
             assert "open.feishu.cn" not in row.config_encrypted
             assert "signing-secret" not in row.config_encrypted
+
+
+def test_ai_capability_endpoint_uses_configured_client(tmp_path: Path):
+    with make_client(tmp_path) as client:
+        client.app.state.ai = type(
+            "CapabilityAI",
+            (),
+            {
+                "capabilities": lambda self: {
+                    "json": True,
+                    "tools": True,
+                    "stream": False,
+                    "vision": True,
+                }
+            },
+        )()
+
+        response = client.post("/api/settings/ai/test")
+
+        assert response.status_code == 200
+        assert response.json()["tools"] is True
+        assert response.json()["stream"] is False
 

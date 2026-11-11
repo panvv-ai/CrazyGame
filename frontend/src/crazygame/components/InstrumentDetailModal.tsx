@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw } from 'lucide-react'
+import { MessageSquare, RefreshCw, Sparkles } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 import { api } from '../api'
 import { changeClass, formatPercent, seriesViewState } from '../lib'
@@ -24,6 +25,7 @@ export function InstrumentDetailModal({
   onClose: () => void
 }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [points, setPoints] = useState<Array<{ date: string; value: number }>>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -76,6 +78,22 @@ export function InstrumentDetailModal({
               {formatPercent(item.quote?.change_pct)}
             </span>
             <DataState quote={item.quote} />
+          </div>
+          <div className="ai-detail-actions">
+            <Button
+              variant="secondary"
+              onClick={() => navigate(`/ai?instrument=${item.instrument_id}&tab=reports`)}
+            >
+              <Sparkles size={15} />
+              {t('ai.diagnose')}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => navigate(`/ai?instrument=${item.instrument_id}&tab=chat`)}
+            >
+              <MessageSquare size={15} />
+              {t('ai.continueChat')}
+            </Button>
           </div>
           {state === 'ready' ? (
             <LineChart

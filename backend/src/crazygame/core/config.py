@@ -50,6 +50,17 @@ class AppConfig(BaseModel):
     )
     ai_api_key: str = Field(default_factory=lambda: os.getenv("AI_API_KEY", ""))
     ai_model: str = Field(default_factory=lambda: os.getenv("AI_MODEL", "gpt-4.1-mini"))
+    ai_vision_model: str = Field(
+        default_factory=lambda: os.getenv("AI_VISION_MODEL", "")
+    )
+    news_enabled: bool = Field(
+        default_factory=lambda: os.getenv("NEWS_ENABLED", "true").lower()
+        not in {"0", "false", "no"}
+    )
+    news_provider: str = Field(
+        default_factory=lambda: os.getenv("NEWS_PROVIDER", "eastmoney")
+    )
+    news_api_key: str = Field(default_factory=lambda: os.getenv("NEWS_API_KEY", ""))
     daily_review_hour: int = 15
     daily_review_minute: int = 20
     enable_scheduler: bool = True
