@@ -35,6 +35,10 @@ There is no account, login, registration, or permission system. SQLite stores ap
 - Price and daily-change alerts with cooldown and market-hours gating.
 - Feishu bot and Alibaba Cloud SMS delivery with retry tracking.
 - Daily portfolio review after the A-share close, rendered as Markdown.
+- On-demand AI diagnosis with trend, score, support/resistance, risks, catalysts, and position-specific observations.
+- Multi-turn ask-stock with streamed answers, tool progress, session recovery, and one server-bound active instrument.
+- Screenshot recognition for stocks and mainland-listed ETFs with explicit user confirmation.
+- Ranked hotspots from free Eastmoney news and announcements, with optional Tavily or Bocha enhancement.
 - Chinese and English interfaces, with reports and alerts following the UI language.
 - Local and Docker Compose deployment.
 
@@ -107,6 +111,8 @@ In the Watchlist page, choose Stocks or Funds, then select A-shares, Hong Kong, 
 
 Holdings record actual quantities, average costs, and unrealized P/L. They are the only source used by the daily health review. Groups do not record real positions; they combine watched instruments with target weights so you can review a hypothetical basket and its long-term curve. If you only need to analyze real assets, you can ignore groups.
 
+Open the AI workspace from the top bar to ask follow-up questions or generate a structured report. Instrument quote details also provide direct diagnosis and chat actions. AI diagnosis supports A-share, Hong Kong, and US stocks plus mainland-listed ETFs. Open-end funds remain on their existing NAV and daily-review paths.
+
 ## Configuration
 
 | Variable | Default | Purpose |
@@ -120,6 +126,10 @@ Holdings record actual quantities, average costs, and unrealized P/L. They are t
 | `AI_BASE_URL` | OpenAI-compatible URL | AI endpoint |
 | `AI_API_KEY` | empty | AI key; can also be set in the UI |
 | `AI_MODEL` | `gpt-4.1-mini` | Model identifier |
+| `AI_VISION_MODEL` | empty | Optional vision model; inherits `AI_MODEL` when empty |
+| `NEWS_ENABLED` | `true` | Enables public news and announcement requests |
+| `NEWS_PROVIDER` | `eastmoney` | Free default, or optional `tavily` / `bocha` |
+| `NEWS_API_KEY` | empty | Optional enhanced-search key |
 
 ## Project layout
 
@@ -139,6 +149,9 @@ See [architecture.md](architecture.md) and [design-language.md](design-language.
 - Database: `DATA_DIR/crazygame.sqlite3`.
 - Local encryption key: `DATA_DIR/.app-secret` with `0600` permissions.
 - Credentials are encrypted and masked in API responses.
+- AI diagnosis sends the active instrument's quote, technical evidence, related news, and current holding cost to the configured AI service.
+- Public news requests go to Eastmoney unless news is disabled.
+- Screenshot bytes are sent to the configured vision model and are not persisted.
 - Do not expose the unauthenticated service directly to the public internet.
 
 ## Development
@@ -157,6 +170,9 @@ pnpm build
 - Mainland-listed ETFs only.
 - Open-end funds do not have continuous trading prices.
 - Public quote endpoints have no SLA.
+- Public news endpoints have no SLA; unavailable hotspots are disclosed rather than invented.
+- AI reports and ask-stock turns run on demand, not for the entire watchlist.
+- The first version excludes open-end fund AI diagnosis and cross-stock comparison.
 - Dark theme only.
 - AI output never executes trades.
 

@@ -135,11 +135,19 @@ export interface AISettings {
   base_url: string
   api_key: string
   model: string
+  vision_model: string
+}
+
+export interface NewsSettings {
+  enabled: boolean
+  provider: 'eastmoney' | 'tavily' | 'bocha'
+  api_key: string
 }
 
 export interface AppSettings {
   language: 'zh-CN' | 'en-US'
   ai: AISettings
+  news: NewsSettings
   daily_review_channel_ids: number[]
   daily_review_enabled: boolean
 }
@@ -154,5 +162,128 @@ export interface DailyReview {
   notified_at: string | null
   error: string
   created_at: string
+}
+
+export interface AIInstrument {
+  id?: number
+  instrument_id?: number
+  symbol: string
+  name: string
+  market: string
+  asset_type: string
+  currency?: string
+  quote_mode?: string
+}
+
+export interface AIHotspot {
+  title: string
+  summary: string
+  url: string
+  source: string
+  published_at: string | null
+  relevance_kind: 'direct' | 'sector' | 'macro'
+  relevance_score: number
+}
+
+export interface AIDecisionReport {
+  instrument: AIInstrument
+  score: number
+  verdict: 'bullish' | 'neutral' | 'bearish'
+  confidence: 'high' | 'medium' | 'low'
+  core_conclusion: string
+  trend: string
+  quote: Quote | Record<string, never>
+  hotspots: AIHotspot[]
+  risks: string[]
+  catalysts: string[]
+  position_advice: {
+    no_position: string
+    has_position: string
+  }
+  price_plan: {
+    support: number | null
+    resistance: number | null
+    invalidation_reference: number | null
+  }
+  action_checklist: string[]
+  data_quality: {
+    level: 'good' | 'limited' | 'poor' | 'unknown'
+    limitations: string[]
+    quote_as_of: string
+    quote_source: string
+    quote_freshness: string
+  }
+  disclaimer: string
+}
+
+export interface AIReportRecord {
+  id: number
+  instrument: AIInstrument
+  status: 'pending' | 'success' | 'failed' | string
+  language: string
+  title: string
+  verdict: 'bullish' | 'neutral' | 'bearish'
+  confidence: 'high' | 'medium' | 'low'
+  score: number
+  content_markdown: string
+  report: AIDecisionReport | Record<string, never>
+  model_label: string
+  error: string
+  created_at: string
+}
+
+export interface AIChatMessage {
+  id: number | string
+  role: 'user' | 'assistant'
+  content: string
+  metadata?: {
+    tools?: Array<{ name: string; ok: boolean }>
+  }
+  created_at?: string
+}
+
+export interface AIChatSession {
+  id: string
+  title: string
+  message_count: number
+  updated_at: string
+  active_instrument: AIInstrument | null
+}
+
+export interface AIChatSessionDetail {
+  id: string
+  title: string
+  active_instrument: AIInstrument | null
+  messages: AIChatMessage[]
+}
+
+export interface RecognizedInstrument {
+  code: string
+  name: string | null
+  confidence: 'high' | 'medium' | 'low'
+  instrument: Omit<Instrument, 'id' | 'instrument_id'> | null
+}
+
+export interface AISseEvent {
+  type: string
+  stage?: string
+  tool?: string
+  success?: boolean
+  content?: string
+  message?: string
+  code?: string
+  session_id?: string
+  active_instrument?: AIInstrument | null
+  candidates?: Array<{
+    symbol: string
+    name: string
+    market: string
+    asset_type: string
+  }>
+  report?: AIDecisionReport
+  id?: number
+  status?: string
+  content_markdown?: string
+  [key: string]: unknown
 }
 

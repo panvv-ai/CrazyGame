@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.crazygame.api.routes.alerts import router as alerts_router
+from src.crazygame.api.routes.ai import router as ai_router
 from src.crazygame.api.routes.channels import router as channels_router
 from src.crazygame.api.routes.market import public_router, router
 from src.crazygame.api.routes.portfolio import router as portfolio_router
@@ -21,6 +22,8 @@ from src.crazygame.core.database import (
 )
 from src.crazygame.core.secrets import SecretBox
 from src.crazygame.services.market import MarketService
+from src.crazygame.services.ai_context import AIContextService
+from src.crazygame.services.ai_news import NewsService
 from src.crazygame.services.senders import NotificationSender
 
 
@@ -60,6 +63,15 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     app.state.session_factory = session_factory
     app.state.secret_box = SecretBox(app_config.encryption_key)
     app.state.quote_service = MarketService()
+    app.state.news_service = NewsService(
+        session_factory,
+        secret_box=app.state.secret_box,
+    )
+    app.state.ai_context_service = AIContextService(
+        session_factory=session_factory,
+        quote_service=app.state.quote_service,
+        news_service=app.state.news_service,
+    )
     app.state.notification_sender = NotificationSender()
     from src.crazygame.services.ai import AIClient
 
@@ -68,6 +80,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
             app_config.ai_base_url,
             app_config.ai_api_key,
             app_config.ai_model,
+            app_config.ai_vision_model,
         )
         if app_config.ai_api_key
         else None
@@ -79,6 +92,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     app.include_router(portfolio_router, prefix="/api/holdings")
     app.include_router(alerts_router, prefix="/api/alerts")
     app.include_router(reviews_router, prefix="/api/reviews/daily")
+    app.include_router(ai_router, prefix="/api/ai")
 
     static_dir = Path(__file__).resolve().parents[3] / "static"
     if static_dir.exists():

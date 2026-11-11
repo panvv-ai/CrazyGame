@@ -192,6 +192,20 @@ class MarketService:
         cutoff = date.today().fromordinal(date.today().toordinal() - days)
         return [(day, value) for day, value in points if day >= cutoff]
 
+    def fetch_bars(self, instrument: Instrument, *, days: int = 250) -> list:
+        """Return listed-instrument OHLCV bars for deterministic diagnostics."""
+        if instrument.asset_type == "open_end_fund":
+            return []
+        from src.crazygame.services.marketdata import get_marketdata_client
+
+        requested = max(7, min(int(days), 250))
+        return get_marketdata_client().klines(
+            instrument.symbol,
+            market=instrument.market,
+            days=requested,
+            min_count=min(requested, 60),
+        )
+
 
 def _float(value) -> float | None:
     """把外部数据源可能返回的字符串或空值安全转换为 float。"""
