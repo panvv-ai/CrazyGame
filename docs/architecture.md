@@ -23,8 +23,6 @@ There is no account system, login page, registration flow, multi-user permission
 backend/
 ├── main.py
 ├── requirements.txt
-├── requirements-dev.txt
-├── pyproject.toml
 ├── src/crazygame/
 │   ├── api/
 │   │   ├── app.py
@@ -62,7 +60,6 @@ backend/
 │       ├── notifications.py
 │       ├── scheduler.py
 │       └── senders.py
-└── tests/
 ```
 
 ## Data model

@@ -1,4 +1,20 @@
 #!/usr/bin/env bash
+#
+# CrazyGame one-command Docker build and deployment
+# CrazyGame 一键构建并部署脚本
+#
+# Purpose / 目的:
+#   Build crazygame:<TAG>, recreate the Compose container, and wait for health.
+#   构建 crazygame:<TAG>，重建 Compose 容器，并等待健康检查通过。
+#
+# Usage / 用法:
+#   ./docker-start.sh [OPTIONS] [TAG]
+#   ./docker-start.sh              # WARN and fall back to TAG=v1
+#   ./docker-start.sh v2           # Build and deploy crazygame:v2
+#   ./docker-start.sh --no-build v2
+#   ./docker-start.sh --no-cache v2
+#   ./docker-start.sh --dry-run v2
+#
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -12,27 +28,38 @@ TAG=""
 usage() {
   cat <<'EOF'
 CrazyGame one-command Docker deployment
+CrazyGame 一键 Docker 构建与部署
 
-Usage:
-  ./docker-start.sh <TAG>
+Usage / 用法:
+  ./docker-start.sh [TAG]             (no TAG -> WARN, fallback to v1)
   ./docker-start.sh --no-build <TAG>
   ./docker-start.sh --no-cache <TAG>
   ./docker-start.sh --dry-run <TAG>
 
-Examples:
+Examples / 示例:
+  ./docker-start.sh                   # auto-select v1
   ./docker-start.sh v2
   ./docker-start.sh --no-build v2
   CRAZYGAME_NODE_IMAGE=docker.m.daocloud.io/library/node:22-alpine \
   CRAZYGAME_PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim \
     ./docker-start.sh v2
 
-The image tag is required. An arbitrary newer tag is never treated as latest.
+No TAG defaults to v1 with a warning.
+未传 TAG 时会输出 WARN，并自动使用 v1。
 EOF
 }
 
 fail() {
   echo "ERROR: $*" >&2
   exit 1
+}
+
+warn() {
+  if [[ -t 2 && -z "${NO_COLOR:-}" ]]; then
+    printf '\033[33mWARN:\033[0m %s\n' "$*" >&2
+  else
+    printf 'WARN: %s\n' "$*" >&2
+  fi
 }
 
 docker_retry() {
@@ -86,8 +113,9 @@ for argument in "$@"; do
 done
 
 if [[ -z "$TAG" ]]; then
-  usage
-  fail "Image tag is required."
+  warn "未指定镜像 TAG，自动使用 v1。"
+  warn "No image tag supplied; falling back to v1."
+  TAG="v1"
 fi
 
 if [[ ! "$TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
@@ -112,15 +140,6 @@ echo "Python base  : ${PYTHON_IMAGE}"
 echo "Build        : $([[ "$BUILD_IMAGE" -eq 1 ]] && echo yes || echo no)"
 echo "No cache     : $([[ "$NO_CACHE" -eq 1 ]] && echo yes || echo no)"
 echo
-
-if [[ ! -f .env ]]; then
-  echo "→ Creating .env from config/env.example"
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "+ cp config/env.example .env"
-  else
-    cp config/env.example .env
-  fi
-fi
 
 if [[ "$BUILD_IMAGE" -eq 1 ]]; then
   if [[ "$DRY_RUN" -eq 1 ]]; then

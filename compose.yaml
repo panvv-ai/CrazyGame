@@ -11,9 +11,6 @@ services:
         PYTHON_IMAGE: ${CRAZYGAME_PYTHON_IMAGE:-python:3.11-slim}
     image: crazygame:${CRAZYGAME_TAG:-latest}
     restart: unless-stopped
-    env_file:
-      - path: .env
-        required: false
     environment:
       DATA_DIR: /app/data
       TZ: Asia/Shanghai

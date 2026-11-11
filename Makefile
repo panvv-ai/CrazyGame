@@ -1,4 +1,4 @@
-.PHONY: help setup dev-api dev-web test build compose-up compose-start compose-down
+.PHONY: help setup dev-api dev-web build compose-up compose-start compose-down
 
 TAG ?= latest
 
@@ -7,14 +7,13 @@ help:
 	@echo "  make setup       Install Python and frontend dependencies"
 	@echo "  make dev-api     Run FastAPI on :8000"
 	@echo "  make dev-web     Run Vite on :5183"
-	@echo "  make test        Run backend and frontend tests"
 	@echo "  make build       Build crazygame:$(TAG)"
 	@echo "  make compose-up  Build and start with Docker Compose ($(TAG))"
 	@echo "  make compose-start Start an existing crazygame:$(TAG) without rebuilding"
 
 setup:
 	uv venv .venv --python 3.11
-	uv pip install --python .venv/bin/python -r backend/requirements-dev.txt
+	uv pip install --python .venv/bin/python -r backend/requirements.txt
 	cd frontend && pnpm install --frozen-lockfile
 
 dev-api:
@@ -23,11 +22,6 @@ dev-api:
 
 dev-web:
 	cd frontend && pnpm dev
-
-test:
-	cd backend && ../.venv/bin/python -m pytest tests -q
-	.venv/bin/python -m pytest marketdata/tests -q
-	cd frontend && pnpm test
 
 build:
 	./scripts/build.sh $(TAG)
