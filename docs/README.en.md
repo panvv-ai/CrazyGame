@@ -153,7 +153,6 @@ frontend/      React UI, i18n, visual system
 marketdata/    reusable quote and daily-line package
 docs/          architecture, design language, English README
 docker-start.sh one-command build and deployment
-scripts/       build helper
 ```
 
 See [architecture.md](architecture.md) and [design-language.md](design-language.md).

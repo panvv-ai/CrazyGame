@@ -1,4 +1,4 @@
-.PHONY: help setup dev-api dev-web build compose-up compose-start compose-down
+.PHONY: help setup dev-api dev-web compose-up compose-start compose-down
 
 TAG ?= latest
 
@@ -7,7 +7,6 @@ help:
 	@echo "  make setup       Install Python and frontend dependencies"
 	@echo "  make dev-api     Run FastAPI on :8000"
 	@echo "  make dev-web     Run Vite on :5183"
-	@echo "  make build       Build crazygame:$(TAG)"
 	@echo "  make compose-up  Build and start with Docker Compose ($(TAG))"
 	@echo "  make compose-start Start an existing crazygame:$(TAG) without rebuilding"
 
@@ -22,9 +21,6 @@ dev-api:
 
 dev-web:
 	cd frontend && pnpm dev
-
-build:
-	./scripts/build.sh $(TAG)
 
 compose-up:
 	CRAZYGAME_TAG=$(TAG) docker compose up -d --build
