@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   AreaSeries,
   ColorType,
@@ -22,6 +23,7 @@ export function LineChart({
   series: ChartSeries[]
   height?: number
 }) {
+  const { t } = useTranslation()
   const hostRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -94,6 +96,6 @@ export function LineChart({
     }
   }, [series, height])
 
-  return <div className="line-chart" ref={hostRef} aria-label="line chart" />
+  return <div className="line-chart" ref={hostRef} aria-label={t('common.chart')} />
 }
 

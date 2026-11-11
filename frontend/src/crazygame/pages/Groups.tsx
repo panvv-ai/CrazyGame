@@ -12,6 +12,7 @@ import {
   Field,
   GlassPanel,
   Input,
+  InstrumentMark,
   Loading,
   Metric,
   Modal,
@@ -110,6 +111,17 @@ export function GroupsPage() {
 
   const selected = groups.find((group) => group.id === selectedId) ?? null
   const visibleGroups = groups.filter((group) => group.scope === scope)
+  const thirtyDayChange = useMemo(() => {
+    if (series.length < 2) return null
+    const latest = series[series.length - 1]
+    const cutoff = new Date(`${latest.date}T00:00:00Z`)
+    cutoff.setUTCDate(cutoff.getUTCDate() - 30)
+    const first = series.find(
+      (point) => new Date(`${point.date}T00:00:00Z`) >= cutoff
+    )
+    if (!first || first.value <= 0) return null
+    return (latest.value / first.value - 1) * 100
+  }, [series])
   const uniqueWatchlist = useMemo(() => {
     const seen = new Set<number>()
     return watchlist.filter((item) => {
@@ -207,6 +219,7 @@ export function GroupsPage() {
   return (
     <>
       <PageHeader
+        eyebrow={t('groups.eyebrow')}
         title={t('groups.title')}
         subtitle={t('groups.subtitle')}
         action={
@@ -291,6 +304,11 @@ export function GroupsPage() {
                     label={t('groups.coverage')}
                     value={`${Math.round((selected.coverage ?? 0) * 100)}%`}
                   />
+                  <Metric
+                    label={t('groups.thirtyDay')}
+                    value={formatPercent(thirtyDayChange)}
+                    tone={changeClass(thirtyDayChange)}
+                  />
                   <Metric label={t('groups.members')} value={selected.members.length} />
                 </div>
               </GlassPanel>
@@ -355,7 +373,11 @@ export function GroupsPage() {
                   {selected.members.map((member) => (
                     <div className="member-row" key={member.instrument_id}>
                       <div className="instrument-identity">
-                        <span className="market-monogram">{member.market.slice(0, 2)}</span>
+                        <InstrumentMark
+                          name={member.name}
+                          symbol={member.symbol}
+                          market={member.market}
+                        />
                         <span>
                           <strong>{member.name}</strong>
                           <small>{member.symbol} · {t(`market.${member.market}`)}</small>

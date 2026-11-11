@@ -36,11 +36,15 @@ export function SettingsPage() {
   const [channelType, setChannelType] = useState<'feishu' | 'aliyun_sms'>('feishu')
   const [channelName, setChannelName] = useState('')
   const [channelConfig, setChannelConfig] = useState<Record<string, string>>({})
+  const [channelSaving, setChannelSaving] = useState(false)
+  const [testingDraftChannel, setTestingDraftChannel] = useState(false)
+  const [testingChannelId, setTestingChannelId] = useState<number | null>(null)
   const [capabilities, setCapabilities] = useState<{
     json: boolean
     tools: boolean
     stream: boolean
     vision: boolean
+    ok: boolean
   } | null>(null)
   const [testingCapabilities, setTestingCapabilities] = useState(false)
 
@@ -91,11 +95,27 @@ export function SettingsPage() {
     setChannelConfig((current) => ({ ...current, [key]: value }))
   }
 
+  function hasRequiredChannelConfig() {
+    if (channelType === 'feishu') {
+      return Boolean(channelConfig.webhook_url?.trim())
+    }
+    return Boolean(
+      channelConfig.access_key_id?.trim() &&
+      channelConfig.access_key_secret?.trim() &&
+      channelConfig.sign_name?.trim() &&
+      channelConfig.template_code_zh?.trim() &&
+      channelConfig.phone_numbers?.trim()
+    )
+  }
+
   async function addChannel() {
-    if (!channelName.trim()) {
-      setError(t('common.required'))
+    setError('')
+    setMessage('')
+    if (!channelName.trim() || !hasRequiredChannelConfig()) {
+      setError(t('settings.channelRequired'))
       return
     }
+    setChannelSaving(true)
     try {
       await api.createChannel({
         name: channelName.trim(),
@@ -109,6 +129,26 @@ export function SettingsPage() {
       await load()
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t('common.unknownError'))
+    } finally {
+      setChannelSaving(false)
+    }
+  }
+
+  async function testDraftChannel() {
+    setError('')
+    setMessage('')
+    if (!hasRequiredChannelConfig()) {
+      setError(t('settings.channelRequired'))
+      return
+    }
+    setTestingDraftChannel(true)
+    try {
+      await api.testChannelConfig({ type: channelType, config: channelConfig })
+      setMessage(t('settings.testSuccess'))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t('common.unknownError'))
+    } finally {
+      setTestingDraftChannel(false)
     }
   }
 
@@ -143,11 +183,16 @@ export function SettingsPage() {
   }
 
   async function testChannel(channel: NotifyChannel) {
+    setError('')
+    setMessage('')
+    setTestingChannelId(channel.id)
     try {
       await api.testChannel(channel.id)
       setMessage(t('settings.testSuccess'))
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t('common.unknownError'))
+    } finally {
+      setTestingChannelId(null)
     }
   }
 
@@ -160,13 +205,28 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
+      <PageHeader
+        eyebrow={t('settings.eyebrow')}
+        title={t('settings.title')}
+        subtitle={t('settings.subtitle')}
+        action={
+          <Button onClick={saveSettings} disabled={saving}>
+            <Check size={15} />
+            {saving ? t('common.loading') : t('settings.savePreferences')}
+          </Button>
+        }
+      />
       {message ? <p className="form-success"><Check size={15} />{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
 
-      <div className="settings-grid">
-        <GlassPanel className="settings-card reveal">
-          <p className="eyebrow">{t('settings.language')}</p>
+      <div className="settings-layout">
+        <GlassPanel className="settings-card language-card reveal">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">{t('settings.language')}</p>
+              <h2>{t('settings.displayLanguage')}</h2>
+            </div>
+          </div>
           <div className="language-choice">
             <button
               className={settings.language === 'zh-CN' ? 'active' : ''}
@@ -185,8 +245,19 @@ export function SettingsPage() {
           </div>
         </GlassPanel>
 
-        <GlassPanel className="settings-card reveal reveal-delay-1">
-          <p className="eyebrow">{t('settings.ai')}</p>
+        <GlassPanel className="settings-card ai-settings-card reveal reveal-delay-1">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">{t('settings.ai')}</p>
+              <h2>{t('settings.diagnosisModel')}</h2>
+            </div>
+            {capabilities ? (
+              <Badge tone={capabilities.ok ? 'success' : 'warn'}>
+                <i className="status-dot" />
+                {t(capabilities.ok ? 'settings.connected' : 'settings.connectionIssue')}
+              </Badge>
+            ) : null}
+          </div>
           <div className="stack-form">
             <Field label={t('settings.baseUrl')}>
               <Input
@@ -263,7 +334,12 @@ export function SettingsPage() {
         </GlassPanel>
 
         <GlassPanel className="settings-card reveal">
-          <p className="eyebrow">{t('settings.newsIntel')}</p>
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">{t('settings.newsIntel')}</p>
+              <h2>{t('settings.researchSources')}</h2>
+            </div>
+          </div>
           <div className="stack-form">
             <label className="check-row">
               <input
@@ -314,7 +390,12 @@ export function SettingsPage() {
         </GlassPanel>
 
         <GlassPanel className="settings-card reveal reveal-delay-2">
-          <p className="eyebrow">{t('settings.dailyReview')}</p>
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">{t('settings.dailyReview')}</p>
+              <h2>{t('settings.reviewSchedule')}</h2>
+            </div>
+          </div>
           <label className="check-row">
             <input
               type="checkbox"
@@ -350,12 +431,13 @@ export function SettingsPage() {
           </div>
         </GlassPanel>
 
-        <GlassPanel className="settings-card settings-wide reveal">
+        <GlassPanel className="settings-card settings-wide notification-settings reveal">
           <div className="section-head">
             <div>
-              <p className="eyebrow">{t('settings.channels')}</p>
-              <h2>{channels.length || 0}</h2>
+              <p className="eyebrow">{t('settings.notificationsEyebrow')}</p>
+              <h2>{t('settings.notificationChannels')}</h2>
             </div>
+            <Badge>{channels.length}</Badge>
           </div>
           <div className="channel-list">
             {channels.map((channel) => (
@@ -368,21 +450,36 @@ export function SettingsPage() {
                 <Badge tone={channel.enabled ? 'success' : 'neutral'}>
                   {channel.enabled ? 'ON' : 'OFF'}
                 </Badge>
-                <button className="icon-button" onClick={() => testChannel(channel)} title={t('common.test')}>
+                <button
+                  className="text-action channel-test"
+                  onClick={() => void testChannel(channel)}
+                  disabled={testingChannelId === channel.id}
+                >
                   <FlaskConical size={15} />
+                  {testingChannelId === channel.id ? t('common.loading') : t('common.test')}
                 </button>
                 <button className="icon-button danger" onClick={() => removeChannel(channel)} title={t('common.delete')}>
                   <Trash2 size={15} />
                 </button>
               </div>
             ))}
+            {!channels.length ? (
+              <p className="muted-copy">{t('settings.noChannels')}</p>
+            ) : null}
           </div>
           <div className="channel-builder">
+            <div className="channel-builder-head">
+              <div>
+                <p className="eyebrow">{t('settings.newChannel')}</p>
+                <h3>{t('settings.channelConfig')}</h3>
+              </div>
+              <p>{t('settings.channelConfigHint')}</p>
+            </div>
             <div className="form-grid">
               <Field label={t('settings.channelName')}>
                 <Input value={channelName} onChange={(event) => setChannelName(event.target.value)} />
               </Field>
-              <Field label={t('common.add')}>
+              <Field label={t('settings.channelType')}>
                 <Select
                   value={channelType}
                   onChange={(event) => {
@@ -426,10 +523,23 @@ export function SettingsPage() {
                 </>
               )}
             </div>
-            <Button variant="secondary" onClick={addChannel}>
-              <Plus size={15} />
-              {t(channelType === 'feishu' ? 'settings.addFeishu' : 'settings.addSms')}
-            </Button>
+            <div className="channel-builder-actions">
+              <Button
+                variant="secondary"
+                onClick={() => void testDraftChannel()}
+                disabled={testingDraftChannel || channelSaving}
+              >
+                <FlaskConical size={15} />
+                {testingDraftChannel ? t('common.loading') : t('settings.testConfig')}
+              </Button>
+              <Button
+                onClick={() => void addChannel()}
+                disabled={channelSaving || testingDraftChannel}
+              >
+                <Plus size={15} />
+                {channelSaving ? t('common.loading') : t('settings.saveChannel')}
+              </Button>
+            </div>
           </div>
         </GlassPanel>
 
@@ -442,11 +552,6 @@ export function SettingsPage() {
         </GlassPanel>
       </div>
 
-      <div className="sticky-save">
-        <Button onClick={saveSettings} disabled={saving}>
-          {saving ? t('common.loading') : t('common.save')}
-        </Button>
-      </div>
     </>
   )
 }

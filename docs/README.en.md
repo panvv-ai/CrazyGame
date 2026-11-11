@@ -15,6 +15,8 @@
 
 CrazyGame helps you follow a small set of stocks and funds you genuinely care about, understand allocation and risk, and use AI to organize possible next steps. Data, alerts, and configuration stay local.
 
+The interface uses an "Aurora Workbench" visual system: the ambient light field responds to scrolling, functional pages use compact control rails, and primary actions stay available in the first viewport. AI diagnosis runs in a single-screen workbench with its composer always in view.
+
 CrazyGame is a local, single-user application with no account, login, registration, or permission system. SQLite stores application state, while AI and notification credentials are encrypted at rest.
 
 > [!IMPORTANT]
@@ -32,8 +34,8 @@ CrazyGame is a local, single-user application with no account, login, registrati
     </td>
   </tr>
   <tr>
-    <td align="center">Overview and watchlist quotes</td>
-    <td align="center">AI diagnosis and multi-turn chat</td>
+    <td align="center">Aurora Workbench overview and watchlist quotes</td>
+    <td align="center">Single-screen AI diagnosis and multi-turn chat</td>
   </tr>
   <tr>
     <td width="50%">
@@ -62,7 +64,8 @@ CrazyGame is a local, single-user application with no account, login, registrati
 | **Holdings** | Lightweight P/L tracking | Records quantity, average cost, and notes, with market value and unrealized P/L grouped by currency. |
 | **Weighted groups** | Category-scoped baskets | Normalizes relative weights within one category and shows weighted performance, coverage, and long-term curves. |
 | **Market curves** | Multiple time ranges | Supports 1 month, 3 months, 1 year, 3 years, and all history, with up to five member lines per group. |
-| **Alerts** | Price and daily-change thresholds | Supports daily limits, cooldowns, market-hours gating, and Feishu or SMS delivery. |
+| **Alerts** | Price and daily-change thresholds | Supports daily, 30-minute, hourly, or 6-hour frequency, optional immediate checking, market-hours gating, and Feishu or SMS delivery. |
+| **Notification channels** | Test before saving | Tests unsaved Feishu and Alibaba Cloud SMS credentials without persisting the draft. |
 | **Evidence** | Ranked news and announcements | Uses public Eastmoney sources by default, ranks evidence by relevance and recency, and optionally supports Tavily or Bocha. |
 | **Local deployment** | One-command startup | Builds and runs through Docker Compose and listens only on `127.0.0.1` by default. |
 
@@ -97,6 +100,8 @@ The script builds and starts the container. Open <http://127.0.0.1:8000> when it
 CrazyGame does not require an environment configuration file. Language, LLM Config, news search, and notification channels are configured in Settings, with credentials encrypted in local SQLite.
 
 Enter the provider Base URL, API Key, and model ID. Leave the vision model empty to inherit the main model. Run the capability test before saving the configuration.
+
+Notification channels also support "test before saving." Alert frequency is selected as one field, while the optional immediate check remains off by default.
 
 ## Project layout
 

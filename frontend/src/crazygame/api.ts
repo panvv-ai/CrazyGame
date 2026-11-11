@@ -3,6 +3,7 @@ import type {
   AlertRule,
   AppSettings,
   AssetGroup,
+  CreatedAlertRule,
   DailyReview,
   GroupMemberPoint,
   GroupPoint,
@@ -109,12 +110,31 @@ export const api = {
     once_per_day: boolean
     market_hours_only: boolean
     cooldown_minutes: number
-  }) => request<AlertRule>('/alerts', { method: 'POST', body: JSON.stringify(payload) }),
+    run_now?: boolean
+  }) => request<CreatedAlertRule>('/alerts', { method: 'POST', body: JSON.stringify(payload) }),
   removeAlert: (id: number) => request<{ ok: boolean }>(`/alerts/${id}`, { method: 'DELETE' }),
   setAlertEnabled: (id: number, enabled: boolean) =>
     request<AlertRule>(`/alerts/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ enabled }),
+    }),
+  updateAlert: (
+    id: number,
+    payload: {
+      name?: string
+      metric?: 'price' | 'change_pct'
+      direction?: 'above' | 'below'
+      threshold?: number
+      channel_ids?: number[]
+      enabled?: boolean
+      once_per_day?: boolean
+      market_hours_only?: boolean
+      cooldown_minutes?: number
+    }
+  ) =>
+    request<AlertRule>(`/alerts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
     }),
 
   channels: () => request<{ items: NotifyChannel[] }>('/channels'),
@@ -126,6 +146,11 @@ export const api = {
   }) => request<NotifyChannel>('/channels', { method: 'POST', body: JSON.stringify(payload) }),
   removeChannel: (id: number) => request<{ ok: boolean }>(`/channels/${id}`, { method: 'DELETE' }),
   testChannel: (id: number) => request<{ ok: boolean }>(`/channels/${id}/test`, { method: 'POST' }),
+  testChannelConfig: (payload: { type: 'feishu' | 'aliyun_sms'; config: Record<string, unknown> }) =>
+    request<{ ok: boolean }>('/channels/test', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   settings: () => request<AppSettings>('/settings'),
   updateSettings: (payload: AppSettings) =>

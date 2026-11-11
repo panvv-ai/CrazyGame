@@ -21,6 +21,11 @@ class ChannelPayload(BaseModel):
     enabled: bool = True
 
 
+class ChannelTestPayload(BaseModel):
+    type: str
+    config: dict = {}
+
+
 def channel_dict(row: NotifyChannel, secret_box) -> dict:
     try:
         config = json.loads(secret_box.decrypt(row.config_encrypted))
@@ -70,6 +75,18 @@ def delete_channel(channel_id: int, db=Depends(get_session)):
     return {"ok": True}
 
 
+@router.post("/test")
+def test_channel_config(payload: ChannelTestPayload, request: Request):
+    if payload.type not in SUPPORTED_TYPES:
+        raise HTTPException(400, "unsupported channel type")
+    _send_test_notification(
+        request.app.state.notification_sender,
+        payload.type,
+        payload.config,
+    )
+    return {"ok": True}
+
+
 @router.post("/{channel_id}/test")
 def test_channel(channel_id: int, request: Request, db=Depends(get_session)):
     row = db.get(NotifyChannel, channel_id)
@@ -77,15 +94,23 @@ def test_channel(channel_id: int, request: Request, db=Depends(get_session)):
         raise HTTPException(404, "channel not found")
     try:
         config = json.loads(request.app.state.secret_box.decrypt(row.config_encrypted))
-        ok = request.app.state.notification_sender.send(
+        _send_test_notification(
+            request.app.state.notification_sender,
             row.type,
             config,
-            "测试通知 · CrazyGame",
-            "这是一条测试消息。收到即表示通知渠道配置可用。",
         )
     except Exception as exc:
         raise HTTPException(502, f"channel test failed: {exc}") from exc
+    return {"ok": True}
+
+
+def _send_test_notification(sender, channel_type: str, config: dict) -> None:
+    ok = sender.send(
+        channel_type,
+        config,
+        "测试通知 · CrazyGame",
+        "这是一条测试消息。收到即表示通知渠道配置可用。",
+    )
     if not ok:
         raise HTTPException(502, "channel test failed")
-    return {"ok": True}
 

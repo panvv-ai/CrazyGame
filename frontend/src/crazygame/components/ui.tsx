@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
 import { X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export function Button({
   variant = 'primary',
@@ -42,14 +43,100 @@ export function PageHeader({
   action?: ReactNode
 }) {
   return (
-    <header className="page-header reveal">
-      <div>
+    <header className="route-rail reveal">
+      <div className="route-copy">
         {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
         <h1>{title}</h1>
         {subtitle ? <p>{subtitle}</p> : null}
       </div>
-      {action ? <div className="page-header-action">{action}</div> : null}
+      {action ? <div className="route-actions">{action}</div> : null}
     </header>
+  )
+}
+
+export function InstrumentMark({
+  name,
+  symbol,
+  market,
+}: {
+  name?: string
+  symbol?: string
+  market?: string
+}) {
+  const label = symbol && /^[A-Za-z]/.test(symbol)
+    ? symbol.slice(0, 2).toUpperCase()
+    : name?.slice(0, 1) || market?.slice(0, 2) || '--'
+  return <span className="instrument-mark">{label}</span>
+}
+
+export function Sparkline({
+  values,
+  tone,
+}: {
+  values: number[]
+  tone?: 'up' | 'down'
+}) {
+  if (values.length < 2) {
+    return <span className="sparkline sparkline-empty" aria-hidden="true" />
+  }
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const spread = max - min || 1
+  const points = values
+    .map((value, index) => {
+      const x = (index / (values.length - 1)) * 100
+      const y = 32 - ((value - min) / spread) * 28
+      return `${x.toFixed(2)},${y.toFixed(2)}`
+    })
+    .join(' ')
+  return (
+    <svg
+      className={`sparkline ${tone === 'down' ? 'spark-down' : ''}`}
+      viewBox="0 0 100 36"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <polyline points={points} />
+    </svg>
+  )
+}
+
+export function ProgressBar({
+  value,
+  tone = 'default',
+}: {
+  value: number
+  tone?: 'default' | 'muted'
+}) {
+  const clamped = Math.max(0, Math.min(100, value))
+  return (
+    <span className={`rule-progress ${tone === 'muted' ? 'is-muted' : ''}`} aria-hidden="true">
+      <i style={{ width: `${clamped}%` }} />
+    </span>
+  )
+}
+
+export function AllocationRing({
+  segments,
+}: {
+  segments: Array<{ value: number; color: string }>
+}) {
+  let cursor = 0
+  const stops = segments.map((segment) => {
+    const start = cursor
+    cursor += Math.max(0, segment.value)
+    return `${segment.color} ${start}% ${cursor}%`
+  })
+  return (
+    <div
+      className="allocation-ring"
+      style={{
+        background: `radial-gradient(circle, var(--color-paper-raised) 0 52%, transparent 53%), conic-gradient(${stops.join(', ')})`,
+      }}
+      aria-hidden="true"
+    >
+      <span />
+    </div>
   )
 }
 
@@ -109,8 +196,9 @@ export function EmptyState({
 }
 
 export function Loading() {
+  const { t } = useTranslation()
   return (
-    <div className="loading" role="status" aria-label="loading">
+    <div className="loading" role="status" aria-label={t('common.loading')}>
       <span />
       <span />
       <span />
@@ -129,6 +217,7 @@ export function Modal({
   children: ReactNode
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   if (!open) return null
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
@@ -141,7 +230,7 @@ export function Modal({
       >
         <div className="modal-head">
           <h2>{title}</h2>
-          <button className="icon-button" onClick={onClose} aria-label="close">
+          <button className="icon-button" onClick={onClose} aria-label={t('common.close')}>
             <X size={18} />
           </button>
         </div>

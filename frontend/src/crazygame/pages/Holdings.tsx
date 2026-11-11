@@ -4,13 +4,14 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 
 import { api } from '../api'
 import {
+  AllocationRing,
   Button,
   EmptyState,
   Field,
   GlassPanel,
   Input,
+  InstrumentMark,
   Loading,
-  Metric,
   Modal,
   PageHeader,
   Select,
@@ -74,6 +75,23 @@ export function HoldingsPage() {
   }, [watchlist])
 
   const totals = currencyTotals(holdings)
+  const pnlByCurrency = holdings.reduce<Record<string, number>>((result, holding) => {
+    if (holding.unrealized_pnl === null) return result
+    result[holding.currency] = (result[holding.currency] ?? 0) + holding.unrealized_pnl
+    return result
+  }, {})
+  const marketCounts = holdings.reduce<Record<string, number>>((result, holding) => {
+    result[holding.market] = (result[holding.market] ?? 0) + 1
+    return result
+  }, {})
+  const allocation = Object.entries(marketCounts).map(([market, count], index) => ({
+    market,
+    count,
+    value: holdings.length ? (count / holdings.length) * 100 : 0,
+    color: ['var(--color-accent)', 'var(--color-cyan)', 'var(--color-violet)', 'var(--color-amber)'][
+      index % 4
+    ],
+  }))
 
   function openAdd() {
     setEditing(null)
@@ -121,6 +139,7 @@ export function HoldingsPage() {
   return (
     <>
       <PageHeader
+        eyebrow={t('holdings.eyebrow')}
         title={t('holdings.title')}
         subtitle={t('holdings.subtitle')}
         action={
@@ -135,17 +154,46 @@ export function HoldingsPage() {
         <Loading />
       ) : holdings.length ? (
         <>
-          <div className="currency-summary reveal">
-            {Object.entries(totals).map(([currency, value]) => (
-              <GlassPanel className="currency-card" key={currency}>
-                <Metric
-                  label={`${t('holdings.currencyGroup')} · ${currency}`}
-                  value={formatMoney(value, currency, language)}
-                />
+          <div className="holding-summary reveal">
+            {Object.entries(totals).map(([currency, value], index) => (
+              <GlassPanel
+                className={`summary-card ${index === 0 ? 'summary-main' : ''}`}
+                key={currency}
+              >
+                <p className="eyebrow">
+                  {t('holdings.currencyValue')} · {currency}
+                </p>
+                <strong>{formatMoney(value, currency, language)}</strong>
+                <span>
+                  {t('holdings.pnlInCurrency', {
+                    value: formatMoney(pnlByCurrency[currency] ?? 0, currency, language),
+                  })}
+                </span>
               </GlassPanel>
             ))}
+            <GlassPanel className="summary-card allocation-card">
+              <AllocationRing segments={allocation} />
+              <div className="allocation-legend">
+                <p className="eyebrow">{t('holdings.allocation')}</p>
+                {allocation.map((item) => (
+                  <span key={item.market}>
+                    <i style={{ background: item.color }} />
+                    {t(`market.${item.market}`)} {item.count}
+                  </span>
+                ))}
+              </div>
+            </GlassPanel>
           </div>
           <GlassPanel className="table-panel reveal reveal-delay-1">
+            <div className="section-head">
+              <div>
+                <p className="eyebrow">{t('holdings.positions')}</p>
+                <h2>{t('holdings.current')}</h2>
+              </div>
+              <span className="result-count">
+                {t('holdings.count', { count: holdings.length })}
+              </span>
+            </div>
             <div className="data-table holdings-table">
               <div className="data-row data-head">
                 <span>{t('holdings.instrument')}</span>
@@ -159,7 +207,11 @@ export function HoldingsPage() {
               {holdings.map((holding) => (
                 <div className="data-row" key={holding.id}>
                   <div className="instrument-identity">
-                    <span className="market-monogram">{holding.market.slice(0, 2)}</span>
+                    <InstrumentMark
+                      name={holding.name}
+                      symbol={holding.symbol}
+                      market={holding.market}
+                    />
                     <span>
                       <strong>{holding.name}</strong>
                       <small>{holding.symbol} · {t(`asset.${holding.asset_type}`)}</small>
