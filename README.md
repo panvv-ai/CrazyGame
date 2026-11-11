@@ -80,10 +80,25 @@ docker compose ps
 
 打开 <http://127.0.0.1:8000>。
 
-默认构建 `crazygame:latest`。需要固定 tag 时：
+默认构建并使用 `crazygame:latest`。需要固定 tag 时：
 
 ```bash
-CRAZYGAME_TAG=v1 docker compose up -d --build
+CRAZYGAME_TAG=v2 docker compose up -d --build
+```
+
+`CRAZYGAME_TAG` 是 Docker Compose 的变量插值，可来自当前 shell 或项目根目录 `.env`；`config/env.example` 中的值只有复制成根目录 `.env` 后才参与 Compose。Docker 不会自动把较新的 `v2` 镜像识别成 `latest`。
+
+如果已经执行过 `docker build -t crazygame:v2 .`，不需要重新构建：
+
+```bash
+CRAZYGAME_TAG=v2 docker compose up -d --no-build --force-recreate
+```
+
+也可以使用 Makefile：
+
+```bash
+make compose-up TAG=v2     # 构建并启动
+make compose-start TAG=v2  # 仅启动已构建的镜像
 ```
 
 查看日志：
@@ -134,14 +149,20 @@ cd backend && ../.venv/bin/python main.py
 
 ```bash
 cp config/env.example .env
-docker build --build-arg CRAZYGAME_TAG=v1 -t crazygame:v1 .
+docker build --build-arg CRAZYGAME_TAG=v2 -t crazygame:v2 .
+CRAZYGAME_TAG=v2 docker compose up -d --no-build --force-recreate
+```
+
+如果不使用 Compose，也可以直接运行：
+
+```bash
 docker run -d \
   --name crazygame \
   --restart unless-stopped \
   -p 127.0.0.1:8000:8000 \
   -v crazygame_data:/app/data \
   --env-file .env \
-  crazygame:v1
+  crazygame:v2
 ```
 
 打开 <http://127.0.0.1:8000>。

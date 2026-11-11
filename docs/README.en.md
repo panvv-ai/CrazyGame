@@ -70,7 +70,22 @@ docker compose ps
 
 Open <http://127.0.0.1:8000>. View logs with `docker compose logs -f crazygame` and stop with `docker compose down`.
 
-The default image is `crazygame:latest`. Override the tag with `CRAZYGAME_TAG=v1 docker compose up -d --build`.
+The default image is `crazygame:latest`. Override the tag with `CRAZYGAME_TAG=v2 docker compose up -d --build`.
+
+`CRAZYGAME_TAG` is Docker Compose interpolation from the shell or project-root `.env`; values in `config/env.example` only participate after that file is copied to `.env`. Docker does not treat a newer `v2` image as `latest` automatically.
+
+If `crazygame:v2` is already built, start it without rebuilding:
+
+```bash
+CRAZYGAME_TAG=v2 docker compose up -d --no-build --force-recreate
+```
+
+Or use the Makefile:
+
+```bash
+make compose-up TAG=v2     # build and start
+make compose-start TAG=v2  # start the existing image
+```
 
 ### Local development
 
@@ -91,14 +106,20 @@ Open <http://127.0.0.1:5183>.
 
 ```bash
 cp config/env.example .env
-docker build --build-arg CRAZYGAME_TAG=v1 -t crazygame:v1 .
+docker build --build-arg CRAZYGAME_TAG=v2 -t crazygame:v2 .
+CRAZYGAME_TAG=v2 docker compose up -d --no-build --force-recreate
+```
+
+To run without Compose:
+
+```bash
 docker run -d \
   --name crazygame \
   --restart unless-stopped \
   -p 127.0.0.1:8000:8000 \
   -v crazygame_data:/app/data \
   --env-file .env \
-  crazygame:v1
+  crazygame:v2
 ```
 
 Open <http://127.0.0.1:8000>.

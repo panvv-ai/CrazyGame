@@ -5,6 +5,7 @@ services:
     build:
       context: .
       args:
+        # Shell or project-root .env value. Docker tags are never auto-detected.
         CRAZYGAME_TAG: ${CRAZYGAME_TAG:-latest}
     image: crazygame:${CRAZYGAME_TAG:-latest}
     restart: unless-stopped
