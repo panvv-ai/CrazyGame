@@ -1,4 +1,4 @@
-.PHONY: help setup dev-api dev-web test build compose-up compose-down
+.PHONY: help setup dev-api dev-web test build compose-up compose-start compose-down
 
 TAG ?= latest
 
@@ -10,6 +10,7 @@ help:
 	@echo "  make test        Run backend and frontend tests"
 	@echo "  make build       Build crazygame:$(TAG)"
 	@echo "  make compose-up  Build and start with Docker Compose ($(TAG))"
+	@echo "  make compose-start Start an existing crazygame:$(TAG) without rebuilding"
 
 setup:
 	uv venv .venv --python 3.11
@@ -33,6 +34,9 @@ build:
 
 compose-up:
 	CRAZYGAME_TAG=$(TAG) docker compose up -d --build
+
+compose-start:
+	CRAZYGAME_TAG=$(TAG) docker compose up -d --no-build --force-recreate
 
 compose-down:
 	docker compose down
