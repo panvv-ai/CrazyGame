@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from src.crazygame.api.dependencies import get_session
 from src.crazygame.core.secrets import mask_config
 from src.crazygame.domain.models import AppSetting
-from src.crazygame.services.ai import resolve_runtime_ai_client
+from src.crazygame.services.ai import AIClient, resolve_runtime_ai_client
 
 router = APIRouter()
 
@@ -99,7 +99,9 @@ def update_settings(payload: SettingsPayload, request: Request, db=Depends(get_s
         current = _get_json(db, "ai")
         if ai_payload["api_key"] == "••••••••":
             ai_payload["api_key"] = current.get("api_key", "")
-        if ai_payload["api_key"]:
+        else:
+            ai_payload["api_key"] = ai_payload["api_key"].strip()
+        if ai_payload["api_key"] and ai_payload["api_key"] != current.get("api_key"):
             ai_payload["api_key"] = request.app.state.secret_box.encrypt(
                 ai_payload["api_key"]
             )
@@ -110,7 +112,9 @@ def update_settings(payload: SettingsPayload, request: Request, db=Depends(get_s
         current = _get_json(db, "news")
         if news_payload["api_key"] == "••••••••":
             news_payload["api_key"] = current.get("api_key", "")
-        if news_payload["api_key"]:
+        else:
+            news_payload["api_key"] = news_payload["api_key"].strip()
+        if news_payload["api_key"] and news_payload["api_key"] != current.get("api_key"):
             news_payload["api_key"] = request.app.state.secret_box.encrypt(
                 news_payload["api_key"]
             )
@@ -129,8 +133,8 @@ def update_settings(payload: SettingsPayload, request: Request, db=Depends(get_s
 
 
 @router.post("/ai/test")
-def test_ai_capabilities(request: Request):
-    ai = resolve_runtime_ai_client(
+def test_ai_capabilities(request: Request, payload: AISettings | None = None):
+    saved_ai = resolve_runtime_ai_client(
         session_factory=request.app.state.session_factory,
         secret_box=request.app.state.secret_box,
         fallback_base_url=request.app.state.config.ai_base_url,
@@ -139,7 +143,33 @@ def test_ai_capabilities(request: Request):
         fallback_vision_model=request.app.state.config.ai_vision_model,
         runtime_client=request.app.state.ai,
     )
+    ai = saved_ai
+    if payload is not None and payload.api_key.strip() not in {"", "••••••••"}:
+        ai = AIClient(
+            payload.base_url,
+            payload.api_key,
+            payload.model,
+            payload.vision_model,
+        )
+    elif payload is not None and saved_ai is not None:
+        ai = AIClient(
+            payload.base_url or saved_ai.base_url,
+            saved_ai.api_key,
+            payload.model or saved_ai.model,
+            payload.vision_model or saved_ai.vision_model,
+        )
     if ai is None:
-        raise HTTPException(503, "AI service is not configured")
-    return ai.capabilities()
+        raise HTTPException(
+            503,
+            detail={"code": "ai_not_configured"},
+        )
+    capabilities = ai.capabilities()
+    if not capabilities.get("ok"):
+        raise HTTPException(
+            502,
+            detail={
+                "code": capabilities.get("code") or "ai_config_failed",
+            },
+        )
+    return capabilities
 

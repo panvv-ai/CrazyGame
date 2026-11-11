@@ -354,9 +354,14 @@ class NewsService:
         key = str(payload.get("api_key") or "")
         if key and self.secret_box is not None:
             try:
-                key = self.secret_box.decrypt(key)
+                key, layers = self.secret_box.decrypt_nested(key)
             except Exception:
                 key = ""
+            else:
+                if layers != 1 and key:
+                    payload["api_key"] = self.secret_box.encrypt(key)
+                    row.value = json.dumps(payload, ensure_ascii=False)
+                    db.commit()
         return {
             "enabled": bool(payload.get("enabled", True)),
             "provider": str(payload.get("provider") or "eastmoney"),

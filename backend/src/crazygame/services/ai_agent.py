@@ -269,20 +269,26 @@ class AIAgentRunner:
                 )
                 tool_requests = assistant.get("tool_calls") or []
                 if not tool_requests:
-                    messages.append(
-                        {
-                            "role": "assistant",
-                            "content": assistant.get("content") or "",
-                        }
-                    )
-                    break
-                messages.append(
-                    {
+                    assistant_message = {
                         "role": "assistant",
                         "content": assistant.get("content") or "",
-                        "tool_calls": tool_requests,
                     }
-                )
+                    if assistant.get("reasoning_content"):
+                        assistant_message["reasoning_content"] = assistant[
+                            "reasoning_content"
+                        ]
+                    messages.append(assistant_message)
+                    break
+                assistant_message = {
+                    "role": "assistant",
+                    "content": assistant.get("content") or "",
+                    "tool_calls": tool_requests,
+                }
+                if assistant.get("reasoning_content"):
+                    assistant_message["reasoning_content"] = assistant[
+                        "reasoning_content"
+                    ]
+                messages.append(assistant_message)
                 for call in tool_requests:
                     if tool_calls >= self.max_tool_calls:
                         break
@@ -330,7 +336,6 @@ class AIAgentRunner:
                         {
                             "role": "tool",
                             "tool_call_id": call.get("id", f"call-{tool_calls}"),
-                            "name": name,
                             "content": _serialize_tool_result(result),
                         }
                     )

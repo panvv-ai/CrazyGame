@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import queue
 import threading
 import uuid
@@ -12,7 +13,7 @@ from sqlalchemy import select
 
 from src.crazygame.core.timeutils import iso_utc
 from src.crazygame.domain.models import AIReport, AppSetting, Instrument
-from src.crazygame.services.ai import resolve_runtime_ai_client
+from src.crazygame.services.ai import classify_ai_error, resolve_runtime_ai_client
 from src.crazygame.services.ai_agent import AIAgentRunner
 from src.crazygame.services.ai_chat import AIChatService, instrument_payload
 from src.crazygame.services.ai_report import (
@@ -22,6 +23,7 @@ from src.crazygame.services.ai_report import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class ChatPayload(BaseModel):
@@ -212,12 +214,18 @@ def chat_stream(payload: ChatPayload, request: Request):
                     }
                 )
             except Exception as exc:
+                code = classify_ai_error(exc)
+                logger.exception(
+                    "AI chat request %s failed with %s",
+                    turn.request_id,
+                    code,
+                )
                 events.put(
                     {
                         "type": "error",
                         "request_id": turn.request_id,
-                        "code": "ai_chat_failed",
-                        "message": str(exc)[:300],
+                        "code": code,
+                        "message": code,
                         "session_id": turn.session_id,
                     }
                 )

@@ -273,18 +273,26 @@ export function AIPage() {
       return
     }
     if (event.type === 'error') {
-      const message =
-        event.code === 'ai_not_configured' ? t('ai.notConfigured') : t('ai.chatFailed')
-      setError(message)
+      const failure =
+        event.code === 'ai_not_configured'
+          ? t('ai.notConfigured')
+          : event.code === 'ai_auth_failed'
+            ? t('ai.authFailed')
+            : event.code === 'ai_rate_limited'
+              ? t('ai.rateLimited')
+              : event.code === 'ai_unreachable' || event.code === 'ai_timeout'
+                ? t('ai.unreachable')
+                : event.code === 'ai_provider_error' ||
+                    event.code === 'ai_invalid_response'
+                  ? t('ai.configFailed')
+                : t('ai.chatFailed')
+      setError(failure)
       setMessages((current) =>
         current.map((message) =>
           message.id === draftId
             ? {
                 ...message,
-                content:
-                  event.code === 'ai_not_configured'
-                    ? t('ai.notConfigured')
-                    : t('ai.chatFailed'),
+                content: failure,
                 pending: false,
               }
             : message

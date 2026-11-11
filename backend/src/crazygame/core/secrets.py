@@ -35,6 +35,16 @@ class SecretBox:
         """解密数据库中的凭据；密钥不匹配时会抛出 Fernet 异常。"""
         return self._fernet.decrypt(ciphertext.encode("ascii")).decode("utf-8")
 
+    def decrypt_nested(self, value: str, *, max_layers: int = 10) -> tuple[str, int]:
+        """解开历史版本可能重复加密的凭据，并返回明文和加密层数。"""
+        layers = 0
+        while value.startswith("gAAAA"):
+            if layers >= max_layers:
+                raise ValueError("encrypted secret exceeds maximum nesting depth")
+            value = self.decrypt(value)
+            layers += 1
+        return value, layers
+
 
 def mask_config(config: dict) -> dict:
     """返回脱敏后的配置副本，避免敏感字段通过接口泄露。"""
