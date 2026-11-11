@@ -15,7 +15,7 @@
 
 CrazyGame helps you follow a small set of stocks and funds you genuinely care about, understand allocation and risk, and use AI to organize possible next steps. Data, alerts, and configuration stay local.
 
-The interface uses an "Aurora Workbench" visual system: the ambient light field responds to scrolling, functional pages use compact control rails, and primary actions stay available in the first viewport. AI diagnosis runs in a single-screen workbench with its composer always in view.
+The interface uses layered light fields and compact control rails: the ambient background shifts subtly with scrolling, while primary actions stay available in the first viewport. AI diagnosis uses a single-screen layout with its composer always in view.
 
 CrazyGame is a local, single-user application with no account, login, registration, or permission system. SQLite stores application state, while AI and notification credentials are encrypted at rest.
 
@@ -34,8 +34,8 @@ CrazyGame is a local, single-user application with no account, login, registrati
     </td>
   </tr>
   <tr>
-    <td align="center">Aurora Workbench overview and watchlist quotes</td>
-    <td align="center">Single-screen AI diagnosis and multi-turn chat</td>
+    <td align="center">Overview and watchlist quotes</td>
+    <td align="center">AI diagnosis and multi-turn chat</td>
   </tr>
   <tr>
     <td width="50%">
