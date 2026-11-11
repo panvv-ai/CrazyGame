@@ -1,5 +1,19 @@
 from __future__ import annotations
 
+from datetime import datetime
+
+
+def _display_timestamp(value: str) -> str:
+    """把 ISO 行情时间转换为通知中易读的日期时间，保留原始时区墙钟。"""
+    if not value:
+        return ""
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+    except ValueError:
+        return value.replace("T", " ", 1).split("+", 1)[0][:19]
+
 
 def render_alert_message(rule_name: str, quote: dict, language: str) -> dict[str, str]:
     """根据界面语言生成提醒标题与正文，并保留行情时间与新鲜度说明。"""
@@ -8,7 +22,7 @@ def render_alert_message(rule_name: str, quote: dict, language: str) -> dict[str
     symbol = quote.get("symbol") or ""
     price = quote.get("current_price")
     change = quote.get("change_pct")
-    as_of = quote.get("as_of") or ""
+    as_of = _display_timestamp(str(quote.get("as_of") or ""))
     freshness = quote.get("freshness") or ""
     if english:
         title = f"Price alert · {name} ({symbol})"

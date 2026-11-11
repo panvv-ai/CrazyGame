@@ -14,6 +14,8 @@
 
 CrazyGame helps you follow only the stocks and funds you truly believe in, understand your real allocation and risk, and use AI to organize possible next steps. Data, alerts, and configuration stay local.
 
+The interface uses an "Aurora Workbench" visual system: the ambient light field responds to scrolling, functional pages use compact control rails, and primary actions stay available in the first viewport. AI diagnosis runs in a single-screen workbench with its composer always in view.
+
 There is no account, login, registration, or permission system. SQLite stores application state, while AI and notification credentials are encrypted at rest.
 
 > [!IMPORTANT]
@@ -23,6 +25,14 @@ There is no account, login, registration, or permission system. SQLite stores ap
 
 <p align="center">
   <img src="images/dashboard.png" alt="CrazyGame dashboard with weighted groups, watchlist quotes, and daily portfolio review" width="100%">
+  <br>
+  <sub>Aurora Workbench overview: real holdings, weighted curve, watchlist quotes, and daily review</sub>
+</p>
+
+<p align="center">
+  <img src="images/ai-workspace.png" alt="CrazyGame AI workbench with session navigation and an always-visible composer" width="100%">
+  <br>
+  <sub>AI workbench: sessions, instrument context, and the illuminated composer share one screen</sub>
 </p>
 
 - Separate stock tabs for A-shares, Hong Kong, and US markets.
@@ -32,7 +42,8 @@ There is no account, login, registration, or permission system. SQLite stores ap
 - Category-scoped groups with automatic normalization and coverage reporting.
 - Monthly, quarterly, yearly, multi-year, and full-history line charts.
 - One lightweight portfolio with native-currency totals.
-- Price and daily-change alerts with cooldown and market-hours gating.
+- Price and daily-change alerts with daily, 30-minute, hourly, or 6-hour frequency, optional immediate checking, and market-hours gating.
+- Test notification credentials before saving them, without persisting the draft.
 - Feishu bot and Alibaba Cloud SMS delivery with retry tracking.
 - Daily portfolio review after the A-share close, rendered as Markdown.
 - On-demand AI diagnosis with trend, score, support/resistance, risks, catalysts, and position-specific observations.
@@ -136,6 +147,8 @@ The service binds to loopback by default.
 In the Watchlist page, choose Stocks or Funds, then select A-shares, Hong Kong, US stocks, mainland-listed ETFs, or open-end funds. Search by symbol or name to add an instrument. Drag a card by its handle to reorder the current category.
 
 Holdings record actual quantities, average costs, and unrealized P/L. They are the only source used by the daily health review. Groups do not record real positions; they combine watched instruments with target weights so you can review a hypothetical basket and its long-term curve. If you only need to analyze real assets, you can ignore groups.
+
+For alert setup, choose the instrument, metric, direction, threshold, and alert frequency. Feishu and Alibaba Cloud SMS credentials can be tested before saving; testing a draft does not persist it. The optional "check and execute once immediately after saving" setting is off by default and still respects frequency, market-hours, and cooldown constraints.
 
 Open the AI workspace from the top bar to ask follow-up questions or generate a structured report. Instrument quote details also provide direct diagnosis and chat actions. AI diagnosis supports A-share, Hong Kong, and US stocks plus mainland-listed ETFs. Open-end funds remain on their existing NAV and daily-review paths.
 

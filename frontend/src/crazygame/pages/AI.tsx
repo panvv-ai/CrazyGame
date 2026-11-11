@@ -5,7 +5,9 @@ import {
   MessageSquare,
   Plus,
   RefreshCw,
+  Search,
   Send,
+  Sparkles,
   Square,
   Trash2,
 } from 'lucide-react'
@@ -16,15 +18,16 @@ import { useSearchParams } from 'react-router-dom'
 import { aiApi } from '../ai'
 import { api } from '../api'
 import { AIReportView } from '../components/AIReportView'
+import { DataState } from '../components/DataState'
 import { MarkdownReport } from '../components/MarkdownReport'
 import {
-  Badge,
   Button,
   EmptyState,
   GlassPanel,
+  InstrumentMark,
   Loading,
-  PageHeader,
 } from '../components/ui'
+import { freshnessLabelKey } from '../lib'
 import type {
   AIChatMessage,
   AIChatSession,
@@ -76,6 +79,7 @@ export function AIPage() {
     NonNullable<AISseEvent['candidates']>
   >([])
   const [recognizing, setRecognizing] = useState(false)
+  const [sessionQuery, setSessionQuery] = useState('')
   const abortRef = useRef<AbortController | null>(null)
   const activeIdRef = useRef<number | undefined>(undefined)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
@@ -91,6 +95,17 @@ export function AIPage() {
     })),
     [instruments]
   )
+  const filteredSessions = useMemo(() => {
+    const query = sessionQuery.trim().toLowerCase()
+    if (!query) return sessions
+    return sessions.filter((session) =>
+      [
+        session.title,
+        session.active_instrument?.name,
+        session.active_instrument?.symbol,
+      ].some((value) => value?.toLowerCase().includes(query))
+    )
+  }, [sessionQuery, sessions])
 
   async function loadShell() {
     setLoadingPage(true)
@@ -110,6 +125,7 @@ export function AIPage() {
           asset_type: item.asset_type,
           currency: item.currency,
           quote_mode: item.quote_mode,
+          quote: item.quote,
         })
       }
       for (const item of holdingPayload.items) {
@@ -121,6 +137,7 @@ export function AIPage() {
           asset_type: item.asset_type,
           currency: item.currency,
           quote_mode: item.quote_mode,
+          quote: item.quote,
         })
       }
       const nextInstruments = [...byIdentity.values()].filter(
@@ -458,71 +475,88 @@ export function AIPage() {
 
   if (loadingPage) return <Loading />
 
+  const currentSession = sessions.find((session) => session.id === sessionId)
+  const currentTitle =
+    currentSession?.title ||
+    (activeInstrument
+      ? t('ai.currentTopic', { name: activeInstrument.name })
+      : t('ai.newChat'))
+
   return (
     <>
-      <PageHeader
-        eyebrow={t('ai.eyebrow')}
-        title={t('ai.title')}
-        subtitle={t('ai.subtitle')}
-        action={
+      <header className="ai-route-bar reveal">
+        <div className="ai-route-title">
+          <span className="ai-orb"><Sparkles size={18} /></span>
+          <div>
+            <p className="eyebrow">{t('ai.eyebrow')}</p>
+            <h1>{t('ai.title')}</h1>
+          </div>
+        </div>
+        <div className="ai-route-context">
+          <label className="ai-context-select">
+            {activeInstrument ? (
+              <InstrumentMark
+                name={activeInstrument.name}
+                symbol={activeInstrument.symbol}
+                market={activeInstrument.market}
+              />
+            ) : (
+              <span className="instrument-mark">AI</span>
+            )}
+            <span>
+              <small>{t('ai.activeContext')}</small>
+              <select
+                value={activeId ?? ''}
+                disabled={loading || reportLoading}
+                onChange={(event) => chooseInstrument(event.target.value)}
+                aria-label={t('ai.chooseInstrument')}
+              >
+                <option value="">{t('ai.chooseInstrument')}</option>
+                {savedInstrumentOptions.map((item) => (
+                  <option key={item.id} value={item.id}>{item.label}</option>
+                ))}
+              </select>
+            </span>
+          </label>
+          {activeInstrument?.quote ? (
+            <DataState quote={activeInstrument.quote} />
+          ) : null}
           <Button variant="secondary" onClick={startNewChat}>
             <Plus size={16} />
             {t('ai.newChat')}
           </Button>
-        }
-      />
-
-      <div className="ai-toolbar">
-        <div className="segmented-control ai-tabs">
-          <button
-            className={tab === 'chat' ? 'active' : ''}
-            onClick={() => changeTab('chat')}
-            disabled={loading || reportLoading}
-          >
-            <MessageSquare size={14} /> {t('ai.chatTab')}
-          </button>
-          <button
-            className={tab === 'reports' ? 'active' : ''}
-            onClick={() => changeTab('reports')}
-            disabled={loading || reportLoading}
-          >
-            <FileText size={14} /> {t('ai.reportsTab')}
-          </button>
         </div>
-        <select
-          className="input ai-instrument-select"
-          value={activeId ?? ''}
-          disabled={loading || reportLoading}
-          onChange={(event) => chooseInstrument(event.target.value)}
-        >
-          <option value="">{t('ai.chooseInstrument')}</option>
-          {savedInstrumentOptions.map((item) => (
-            <option key={item.id} value={item.id}>{item.label}</option>
-          ))}
-        </select>
-        {activeInstrument ? (
-          <Badge tone="accent">
-            {activeInstrument.name} · {activeInstrument.symbol}
-          </Badge>
-        ) : null}
-      </div>
+      </header>
 
       {error ? <p className="form-error">{error}</p> : null}
 
       {tab === 'chat' ? (
-        <div className="ai-chat-layout">
-          <GlassPanel className="ai-session-panel">
-            <div className="section-head">
+        <div className="ai-workbench">
+          <aside className="ai-sessions" aria-label={t('ai.sessions')}>
+            <div className="ai-sessions-head">
               <div>
                 <p className="eyebrow">{t('ai.sessions')}</p>
-                <h2>{sessions.length}</h2>
+                <h2>{t('ai.sessions')}</h2>
               </div>
-              <Button variant="ghost" onClick={startNewChat}>
+              <button
+                className="icon-button"
+                onClick={startNewChat}
+                aria-label={t('ai.newChat')}
+              >
                 <Plus size={15} />
-              </Button>
+              </button>
             </div>
-            <div className="ai-session-list">
-              {sessions.map((session) => (
+            <label className="session-search">
+              <Search size={15} />
+              <input
+                value={sessionQuery}
+                onChange={(event) => setSessionQuery(event.target.value)}
+                placeholder={t('ai.searchSessions')}
+                aria-label={t('ai.searchSessions')}
+              />
+            </label>
+            <div className="session-list">
+              {filteredSessions.map((session) => (
                 <div
                   key={session.id}
                   className={`ai-session-row ${session.id === sessionId ? 'active' : ''}`}
@@ -533,7 +567,9 @@ export function AIPage() {
                   >
                     <strong>{session.title || t('ai.untitled')}</strong>
                     <small>
-                      {session.active_instrument?.name || '--'} · {session.message_count}
+                      {session.active_instrument?.name || '--'}
+                      {' · '}
+                      {t('ai.messageCount', { count: session.message_count })}
                     </small>
                   </button>
                   <button
@@ -545,48 +581,103 @@ export function AIPage() {
                   </button>
                 </div>
               ))}
-              {!sessions.length ? (
-                <p className="muted-copy">{t('ai.noSessions')}</p>
+              {!filteredSessions.length ? (
+                <p className="muted-copy">
+                  {sessionQuery ? t('ai.noSessionMatches') : t('ai.noSessions')}
+                </p>
               ) : null}
             </div>
-          </GlassPanel>
+            <div className="session-insight">
+              <span className="insight-icon"><Sparkles size={15} /></span>
+              <p>
+                <strong>{t('ai.contextInsight')}</strong>
+                <span>{t('ai.contextInsightHint')}</span>
+              </p>
+            </div>
+          </aside>
 
-          <GlassPanel className="ai-chat-panel">
-            <div className="ai-message-list">
+          <section className="ai-chat" aria-label={t('ai.chatTab')}>
+            <div className="ai-chat-head">
+              <div className="chat-title">
+                <span className="chat-live">
+                  <i />
+                  {activeInstrument?.quote?.freshness === 'stale'
+                    ? t('freshness.stale')
+                    : t('ai.contextSynced')}
+                </span>
+                <h2>{currentTitle}</h2>
+                <p>
+                  {activeInstrument
+                    ? t('ai.assetContext', {
+                        name: activeInstrument.name,
+                        symbol: activeInstrument.symbol,
+                      })
+                    : t('ai.subtitle')}
+                </p>
+              </div>
+              <div className="chat-actions">
+                <div className="segmented-control ai-mode-tabs">
+                  <button
+                    className={tab === 'chat' ? 'active' : ''}
+                    onClick={() => changeTab('chat')}
+                    disabled={loading || reportLoading}
+                  >
+                    <MessageSquare size={14} /> {t('ai.chatTab')}
+                  </button>
+                  <button
+                    onClick={() => changeTab('reports')}
+                    disabled={loading || reportLoading}
+                  >
+                    <FileText size={14} /> {t('ai.reportsTab')}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="ai-message-list message-stream">
               {!messages.length ? (
-                <EmptyState
-                  title={t('ai.emptyChat')}
-                  action={
-                    <Button variant="secondary" onClick={() => imageInputRef.current?.click()}>
-                      <ImagePlus size={15} />
-                      {t('ai.uploadImage')}
-                    </Button>
-                  }
-                />
+                <div className="ai-empty-state">
+                  <span className="ai-orb"><Sparkles size={20} /></span>
+                  <h3>{t('ai.emptyChat')}</h3>
+                  <p>{t('ai.emptyChatHint')}</p>
+                  <Button variant="secondary" onClick={() => imageInputRef.current?.click()}>
+                    <ImagePlus size={15} />
+                    {t('ai.uploadImage')}
+                  </Button>
+                </div>
               ) : (
                 messages.map((message) => (
-                  <div
+                  <article
                     key={message.id}
                     className={`ai-message ${message.role}${message.pending ? ' pending' : ''}`}
                   >
                     <span className="ai-message-role">
-                      {message.role === 'assistant' ? <Bot size={15} /> : t('ai.you')}
-                    </span>
-                    {message.role === 'assistant' ? (
-                      !message.pending && message.content ? (
-                        <MarkdownReport content={message.content} />
+                      {message.role === 'assistant' ? (
+                        <>
+                          <span className="ai-mini-orb"><Bot size={12} /></span>
+                          {t('ai.assistant')}
+                        </>
                       ) : (
-                        <div className="ai-thinking">
-                          <RefreshCw size={14} />
-                          {progress.length
-                            ? progress.map((stage) => t(`ai.stages.${stage}`, { defaultValue: stage })).join(' · ')
-                            : t('ai.thinking')}
-                        </div>
-                      )
-                    ) : (
-                      <p>{message.content}</p>
-                    )}
-                  </div>
+                        t('ai.you')
+                      )}
+                    </span>
+                    <div className="message-body">
+                      {message.role === 'assistant' ? (
+                        !message.pending && message.content ? (
+                          <MarkdownReport content={message.content} />
+                        ) : (
+                          <div className="ai-thinking">
+                            <RefreshCw size={14} />
+                            {progress.length
+                              ? progress.map((stage) => t(`ai.stages.${stage}`, { defaultValue: stage })).join(' · ')
+                              : t('ai.thinking')}
+                          </div>
+                        )
+                      ) : (
+                        <p>{message.content}</p>
+                      )}
+                    </div>
+                  </article>
                 ))
               )}
               <div ref={messagesEndRef} />
@@ -627,7 +718,14 @@ export function AIPage() {
               </div>
             ) : null}
 
-            <div className="ai-composer">
+            <form
+              className="ai-composer composer"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void sendMessage()
+              }}
+            >
+              <span className="composer-label">{t('ai.continueChat')}</span>
               <textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
@@ -639,15 +737,23 @@ export function AIPage() {
                   }
                 }}
               />
-              <div className="ai-composer-actions">
-                <Button
-                  variant="ghost"
-                  disabled={recognizing || loading}
-                  onClick={() => imageInputRef.current?.click()}
-                >
-                  <ImagePlus size={16} />
-                  {recognizing ? t('common.loading') : t('ai.uploadImage')}
-                </Button>
+              <div className="ai-composer-actions composer-tools">
+                <div>
+                  <button
+                    type="button"
+                    className="composer-tool"
+                    disabled={recognizing || loading}
+                    onClick={() => imageInputRef.current?.click()}
+                  >
+                    <ImagePlus size={15} />
+                    {recognizing ? t('common.loading') : t('ai.uploadImage')}
+                  </button>
+                  {activeInstrument?.quote ? (
+                    <span className="composer-context">
+                      {activeInstrument.name} · {t(freshnessLabelKey(activeInstrument.quote.freshness))}
+                    </span>
+                  ) : null}
+                </div>
                 <input
                   ref={imageInputRef}
                   hidden
@@ -660,30 +766,50 @@ export function AIPage() {
                   }}
                 />
                 {loading ? (
-                  <Button variant="danger" onClick={() => abortRef.current?.abort()}>
+                  <button
+                    type="button"
+                    className="composer-tool"
+                    onClick={() => abortRef.current?.abort()}
+                  >
                     <Square size={14} /> {t('ai.stop')}
-                  </Button>
+                  </button>
                 ) : (
-                  <Button onClick={() => void sendMessage()} disabled={!input.trim()}>
-                    <Send size={15} /> {t('ai.send')}
-                  </Button>
+                  <button
+                    type="submit"
+                    className="send-button"
+                    disabled={!input.trim()}
+                    aria-label={t('ai.send')}
+                  >
+                    <Send size={17} />
+                  </button>
                 )}
               </div>
-            </div>
-          </GlassPanel>
+            </form>
+          </section>
         </div>
       ) : (
-        <div className="ai-report-layout">
-          <GlassPanel className="ai-report-history">
-            <div className="section-head">
+        <div className="ai-workbench ai-report-workspace">
+          <aside className="ai-sessions ai-report-history">
+            <div className="ai-sessions-head">
               <div>
                 <p className="eyebrow">{t('ai.reportHistory')}</p>
-                <h2>{reports.length}</h2>
+                <h2>{t('ai.reportsTab')}</h2>
               </div>
-              <Button onClick={() => void generateReport()} disabled={!canReport || reportLoading}>
+              <Button
+                onClick={() => void generateReport()}
+                disabled={!canReport || reportLoading}
+              >
                 <RefreshCw size={15} />
                 {reportLoading ? t('ai.generating') : t('ai.generate')}
               </Button>
+            </div>
+            <div className="segmented-control ai-mode-tabs report-tabs">
+              <button onClick={() => changeTab('chat')}>
+                <MessageSquare size={14} /> {t('ai.chatTab')}
+              </button>
+              <button className="active" onClick={() => changeTab('reports')}>
+                <FileText size={14} /> {t('ai.reportsTab')}
+              </button>
             </div>
             {reportProgress.length ? (
               <p className="muted-copy">
@@ -710,7 +836,7 @@ export function AIPage() {
                 </p>
               ) : null}
             </div>
-          </GlassPanel>
+          </aside>
           {selectedReport ? (
             <AIReportView record={selectedReport} />
           ) : (

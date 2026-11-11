@@ -278,6 +278,9 @@ export function OverviewPage() {
                   ))}
                 </div>
               </div>
+              <Link className="button button-secondary hero-empty-action" to="/groups">
+                {t('overview.openGroups')}
+              </Link>
             </>
           ) : (
             <>

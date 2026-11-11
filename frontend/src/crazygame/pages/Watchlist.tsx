@@ -21,8 +21,10 @@ import {
   EmptyState,
   GlassPanel,
   Input,
+  InstrumentMark,
   Loading,
   PageHeader,
+  Sparkline,
 } from '../components/ui'
 import {
   changeClass,
@@ -61,6 +63,7 @@ export function WatchlistPage() {
   const [recognized, setRecognized] = useState<RecognizedInstrument[]>([])
   const [selectedCodes, setSelectedCodes] = useState<string[]>([])
   const [recognizing, setRecognizing] = useState(false)
+  const [sparklines, setSparklines] = useState<Record<number, number[]>>({})
 
   async function load(showLoading = false) {
     if (showLoading) setLoading(true)
@@ -79,6 +82,32 @@ export function WatchlistPage() {
     setItems([])
     void load(true)
   }, [kind, scope])
+
+  useEffect(() => {
+    if (!items.length) {
+      setSparklines({})
+      return
+    }
+    let active = true
+    Promise.allSettled(
+      items.slice(0, 20).map(async (item) => {
+        const payload = await api.instrumentSeries(item.instrument_id, 31)
+        return [item.instrument_id, payload.points.map((point) => point.value)] as const
+      })
+    ).then((results) => {
+      if (!active) return
+      const next: Record<number, number[]> = {}
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          next[result.value[0]] = result.value[1]
+        }
+      }
+      setSparklines(next)
+    })
+    return () => {
+      active = false
+    }
+  }, [items])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -215,6 +244,7 @@ export function WatchlistPage() {
   return (
     <>
       <PageHeader
+        eyebrow={t('watchlist.eyebrow')}
         title={t('watchlist.title')}
         subtitle={t('watchlist.subtitle')}
         action={
@@ -246,6 +276,9 @@ export function WatchlistPage() {
             </button>
           ))}
         </div>
+        <span className="result-count">
+          {t('watchlist.count', { count: items.length })}
+        </span>
       </div>
 
       <GlassPanel className="search-panel reveal reveal-delay-1">
@@ -278,7 +311,7 @@ export function WatchlistPage() {
             }}
           />
         </div>
-        <p>{t('watchlist.addHint')}</p>
+        <p className="search-hint">{t('watchlist.addHint')}</p>
         {searching ? <Loading /> : null}
         {results.length ? (
           <div className="search-results">
@@ -394,7 +427,7 @@ export function WatchlistPage() {
               <GlassPanel className="instrument-card reveal">
                 <div className="instrument-card-head">
                   <div className="instrument-identity">
-                    <span className="market-monogram">{item.market.slice(0, 2)}</span>
+                    <InstrumentMark name={item.name} symbol={item.symbol} market={item.market} />
                     <span>
                       <strong>{item.name}</strong>
                       <small>
@@ -415,6 +448,10 @@ export function WatchlistPage() {
                     {formatPercent(item.quote?.change_pct)}
                   </span>
                 </div>
+                <Sparkline
+                  values={sparklines[item.instrument_id] ?? []}
+                  tone={(item.quote?.change_pct ?? 0) < 0 ? 'down' : 'up'}
+                />
                 <div className="instrument-actions">
                   <button className="button button-ghost" onClick={() => setChartItem(item)}>
                     <LineChartIcon size={15} />

@@ -90,6 +90,7 @@ export interface Holding extends Instrument {
 export interface AlertRule extends Instrument {
   id: number
   instrument_id: number
+  instrument_name: string
   name: string
   metric: 'price' | 'change_pct'
   direction: 'above' | 'below'
@@ -100,6 +101,22 @@ export interface AlertRule extends Instrument {
   market_hours_only: boolean
   cooldown_minutes: number
   last_triggered_at: string | null
+  quote: Quote | null
+}
+
+export interface AlertRunResult {
+  scan: {
+    triggered: number
+    skipped: number
+    reason?: string
+  }
+  delivery: {
+    processed: number
+  }
+}
+
+export interface CreatedAlertRule extends AlertRule {
+  run_result?: AlertRunResult
 }
 
 export interface Delivery {
@@ -173,6 +190,7 @@ export interface AIInstrument {
   asset_type: string
   currency?: string
   quote_mode?: string
+  quote?: Quote | null
 }
 
 export interface AIHotspot {

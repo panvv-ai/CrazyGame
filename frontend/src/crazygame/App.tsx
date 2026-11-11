@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -36,13 +36,115 @@ const nav = [
   { to: '/alerts', icon: BellRing, key: 'nav.alerts' },
 ]
 
+const mobileNav = [
+  { to: '/', icon: LayoutDashboard, key: 'nav.overview', end: true },
+  { to: '/watchlist', icon: Star, key: 'nav.watchlist' },
+  { to: '/ai', icon: Sparkles, key: 'nav.ai' },
+  { to: '/holdings', icon: Activity, key: 'nav.holdings' },
+  { to: '/alerts', icon: BellRing, key: 'nav.alerts' },
+]
+
 function AuroraBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const context = canvas.getContext('2d')
+    if (!context) return
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const root = document.documentElement
+    let frame = 0
+    let width = 0
+    let height = 0
+    let dpr = 1
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect()
+      dpr = Math.min(window.devicePixelRatio || 1, 2)
+      width = Math.max(1, Math.round(rect.width * dpr))
+      height = Math.max(1, Math.round(rect.height * dpr))
+      canvas.width = width
+      canvas.height = height
+    }
+
+    const draw = (time = 0) => {
+      const styles = getComputedStyle(root)
+      const colors = [
+        styles.getPropertyValue('--color-glow-blue').trim(),
+        styles.getPropertyValue('--color-glow-cyan').trim(),
+        styles.getPropertyValue('--color-glow-violet').trim(),
+        styles.getPropertyValue('--color-glow-white').trim(),
+      ]
+      const scroll = window.scrollY || 0
+      const slowTime = reduceMotion.matches ? 0 : time * 0.000055
+      const drift = reduceMotion.matches ? 0 : Math.min(scroll * 0.06, 120) * dpr
+
+      context.clearRect(0, 0, width, height)
+      context.globalCompositeOperation = 'screen'
+      const blobs = [
+        [width * (0.28 + Math.sin(slowTime) * 0.04), height * 0.18 + drift, 0.31, colors[0]],
+        [width * (0.72 + Math.cos(slowTime * 1.15) * 0.035), height * 0.27 + drift * 0.75, 0.24, colors[2]],
+        [width * (0.52 + Math.sin(slowTime * 0.8 + 1.8) * 0.06), height * 0.12 + drift * 0.5, 0.18, colors[1]],
+        [width * (0.5 + Math.cos(slowTime * 0.5) * 0.05), height * 0.08 + drift * 0.35, 0.12, colors[3]],
+      ] as const
+
+      for (const [x, y, scale, color] of blobs) {
+        const radius = Math.max(width, height) * scale
+        const gradient = context.createRadialGradient(x, y, 0, x, y, radius)
+        gradient.addColorStop(0, color)
+        gradient.addColorStop(1, 'transparent')
+        context.fillStyle = gradient
+        context.beginPath()
+        context.arc(x, y, radius, 0, Math.PI * 2)
+        context.fill()
+      }
+      context.globalCompositeOperation = 'source-over'
+    }
+
+    const animate = (time: number) => {
+      draw(time)
+      if (!reduceMotion.matches) frame = requestAnimationFrame(animate)
+    }
+    const onScroll = () => {
+      root.style.setProperty('--scroll-shift', String(Math.min(window.scrollY || 0, 900)))
+      root.style.setProperty(
+        '--surface-glint',
+        String(22 + Math.min((window.scrollY || 0) * 0.025, 30))
+      )
+      if (reduceMotion.matches) draw()
+    }
+    const onMotionChange = () => {
+      cancelAnimationFrame(frame)
+      if (reduceMotion.matches) {
+        draw()
+      } else {
+        frame = requestAnimationFrame(animate)
+      }
+    }
+
+    resize()
+    onScroll()
+    draw()
+    if (!reduceMotion.matches) frame = requestAnimationFrame(animate)
+    window.addEventListener('resize', resize)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    reduceMotion.addEventListener('change', onMotionChange)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('resize', resize)
+      window.removeEventListener('scroll', onScroll)
+      reduceMotion.removeEventListener('change', onMotionChange)
+    }
+  }, [])
+
   return (
     <div className="aurora" aria-hidden="true">
-      <div className="aurora-orb aurora-orb-a" />
-      <div className="aurora-orb aurora-orb-b" />
+      <canvas ref={canvasRef} className="aurora-canvas" />
+      <div className="aurora-haze" />
       <div className="aurora-grid" />
       <div className="aurora-horizon" />
+      <div className="aurora-noise" />
     </div>
   )
 }
@@ -120,8 +222,12 @@ export default function App() {
           ))}
         </nav>
         <div className="topbar-actions">
+          <span className="market-status">
+            <i />
+            {t('product.observing')}
+          </span>
           <button
-            className="utility-button ai-launch-button"
+            className="ai-button"
             onClick={() => navigate('/ai')}
             aria-label={t('nav.ai')}
           >
@@ -160,7 +266,7 @@ export default function App() {
       </main>
 
       <nav className="mobile-nav" aria-label="primary navigation">
-        {nav.map(({ to, icon: Icon, key, end }) => (
+        {mobileNav.map(({ to, icon: Icon, key, end }) => (
           <NavLink
             key={to}
             to={to}
