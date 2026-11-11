@@ -6,6 +6,27 @@ from collections.abc import Iterator
 import httpx
 
 
+def classify_ai_error(exc: Exception) -> str:
+    """Map provider failures to stable codes without exposing credentials."""
+    if isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+        if status in {401, 403}:
+            return "ai_auth_failed"
+        if status == 429:
+            return "ai_rate_limited"
+        return "ai_provider_error"
+    if isinstance(exc, (httpx.TimeoutException, TimeoutError)):
+        return "ai_timeout"
+    if isinstance(exc, httpx.RequestError):
+        return "ai_unreachable"
+    if isinstance(
+        exc,
+        (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError),
+    ):
+        return "ai_invalid_response"
+    return "ai_chat_failed"
+
+
 class AIClient:
     """最小化的 OpenAI 兼容 Chat Completions 客户端。"""
 
@@ -16,10 +37,15 @@ class AIClient:
         model: str,
         vision_model: str = "",
     ):
-        self.base_url = base_url.rstrip("/")
-        self.api_key = api_key
-        self.model = model
-        self.vision_model = vision_model or model
+        normalized_base_url = base_url.strip().rstrip("/")
+        if normalized_base_url.endswith("/chat/completions"):
+            normalized_base_url = normalized_base_url.removesuffix(
+                "/chat/completions"
+            )
+        self.base_url = normalized_base_url
+        self.api_key = api_key.strip()
+        self.model = model.strip()
+        self.vision_model = (vision_model or model).strip()
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -136,9 +162,10 @@ class AIClient:
         payload = response.json()
         return payload["choices"][0]["message"]["content"]
 
-    def capabilities(self) -> dict[str, bool]:
+    def capabilities(self) -> dict:
         """Best-effort capability probe for the configured model."""
         result = {"json": False, "tools": False, "stream": False, "vision": False}
+        errors: dict[str, str] = {}
         try:
             raw = self.complete(
                 [
@@ -151,8 +178,22 @@ class AIClient:
                 timeout=30,
             )
             result["json"] = isinstance(json.loads(raw.strip()), dict)
-        except Exception:
-            pass
+        except Exception as exc:
+            errors["json"] = classify_ai_error(exc)
+            if errors["json"] in {
+                "ai_auth_failed",
+                "ai_rate_limited",
+                "ai_unreachable",
+                "ai_timeout",
+            }:
+                result.update(
+                    {
+                        "ok": False,
+                        "code": errors["json"],
+                        "errors": errors,
+                    }
+                )
+                return result
         try:
             message = self.tool_chat(
                 [{"role": "user", "content": "Call capability_probe."}],
@@ -169,8 +210,8 @@ class AIClient:
                 timeout=30,
             )
             result["tools"] = bool(message.get("tool_calls"))
-        except Exception:
-            pass
+        except Exception as exc:
+            errors["tools"] = classify_ai_error(exc)
         try:
             result["stream"] = bool(
                 next(iter(self.stream_text(
@@ -178,8 +219,8 @@ class AIClient:
                     timeout=30,
                 )), "")
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            errors["stream"] = classify_ai_error(exc)
         try:
             import base64
 
@@ -195,8 +236,16 @@ class AIClient:
                     timeout=30,
                 )
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            errors["vision"] = classify_ai_error(exc)
+        ok = any(result[key] for key in ("json", "tools", "stream", "vision"))
+        result.update(
+            {
+                "ok": ok,
+                "code": "" if ok else next(iter(errors.values()), "ai_config_failed"),
+                "errors": errors,
+            }
+        )
         return result
 
 
@@ -246,9 +295,14 @@ def resolve_ai_client(
             stored_key = config.get("api_key") or ""
             if stored_key and secret_box is not None:
                 try:
-                    api_key = secret_box.decrypt(stored_key)
+                    api_key, layers = secret_box.decrypt_nested(stored_key)
                 except Exception:
-                    api_key = stored_key
+                    api_key = ""
+                else:
+                    if layers != 1 and api_key:
+                        config["api_key"] = secret_box.encrypt(api_key)
+                        row.value = json.dumps(config, ensure_ascii=False)
+                        db.commit()
             elif stored_key:
                 api_key = stored_key
     if not api_key or not base_url or not model:

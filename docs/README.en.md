@@ -139,11 +139,26 @@ Holdings record actual quantities, average costs, and unrealized P/L. They are t
 
 Open the AI workspace from the top bar to ask follow-up questions or generate a structured report. Instrument quote details also provide direct diagnosis and chat actions. AI diagnosis supports A-share, Hong Kong, and US stocks plus mainland-listed ETFs. Open-end funds remain on their existing NAV and daily-review paths.
 
+### Configure DeepSeek or another OpenAI-compatible model
+
+Open Settings and fill in:
+
+- **Base URL**: use `https://api.deepseek.com` for DeepSeek. The full `https://api.deepseek.com/chat/completions` URL is also accepted and normalized automatically.
+- **API key**: use a key generated in the provider console. It is masked in the UI and encrypted in SQLite.
+- **Model ID**: `deepseek-flash` is the current DeepSeek recommendation and supports text, images, and tool calls. Use `deepseek-v4-pro` for the text-only Pro model.
+- **Vision model**: leave it empty to inherit the main model. For DeepSeek Flash image recognition, use `deepseek-flash`.
+
+The JSON, tools, streaming, and vision capability test uses the values currently entered in the form, even before saving. An authentication, rate-limit, network, or model configuration failure is reported explicitly. Save the configuration after the test succeeds.
+
+An HTTP `401` means the provider rejected the API key. Regenerate the key in the provider console. Older versions could repeatedly encrypt a masked saved key; the current version automatically unwraps those legacy values and rewrites them as one encrypted layer, so clearing the database is not required.
+
 ## Configuration
 
 CrazyGame does not ship an environment configuration file. It generates the encryption key under `DATA_DIR`, and all model, news, and notification settings are configured in the UI and stored encrypted in SQLite.
 
 `docker-start.sh` receives the image tag as an argument. If Docker Hub access is restricted, pass `CRAZYGAME_NODE_IMAGE` and `CRAZYGAME_PYTHON_IMAGE` for the current command only; no config file is required.
+
+Rebuilding or recreating the container does not remove configuration. The SQLite database and `.app-secret` remain in the `crazygame_data` volume, including across image tag changes and `--no-cache` builds.
 
 ## Project layout
 

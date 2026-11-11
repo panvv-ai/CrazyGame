@@ -52,6 +52,7 @@ CrazyGame 帮你只关注少数真正认可的股票与基金，看清真实持�
 | 场外基金 | 天天基金估值、东方财富净值 |
 | 前端 | React 18、TypeScript、Vite、i18next |
 | 图表 | lightweight-charts |
+| AI | OpenAI 兼容 Chat Completions、DeepSeek Flash/Pro、Tool Calls、流式输出、图片输入 |
 | 通知 | 飞书自定义机器人、阿里云短信 |
 | 部署 | Docker Compose |
 
@@ -216,11 +217,26 @@ ${rule} ${name} ${price} ${change}
 
 AI 诊股首版覆盖 A 股、港股、美股和 A 股场内 ETF。场外基金继续使用现有估值、净值和每日组合简报。
 
+### 配置 DeepSeek 或其他 OpenAI 兼容模型
+
+进入“设置”页面填写以下字段：
+
+- **Base URL**：DeepSeek 官方地址为 `https://api.deepseek.com`。也可以填写完整的 `https://api.deepseek.com/chat/completions`，应用会自动规范化。
+- **API Key**：填写模型服务商控制台生成的 Key。保存后页面只显示掩码，数据库中以密文保存。
+- **模型 ID**：DeepSeek 当前推荐 `deepseek-flash`，支持文本、图片和 Tool Calls；需要纯文本 Pro 模型时使用 `deepseek-v4-pro`。
+- **视觉模型**：留空时继承主模型。使用 DeepSeek Flash 的图片识别能力时，可以同样填写 `deepseek-flash`。
+
+点击“测试 JSON / 工具 / 流式 / 图片”会直接测试页面当前填写的配置，不需要先保存。测试结果会分别显示四项能力；鉴权、限流、网络或模型配置错误会给出明确提示。建议测试通过后再保存。
+
+如果返回 `401`，说明模型服务商拒绝了请求中的 API Key，而不是行情、标的识别或问股数据的问题。请重新生成并填写有效 Key。旧版本曾经在重复保存时叠加加密层；新版会在首次读取时自动恢复并收敛为单层密文，不需要清空数据库。
+
 ## 配置
 
 CrazyGame 不提供环境配置文件。首次启动会在 `DATA_DIR` 中自动生成加密密钥，AI 模型、视觉模型、新闻增强和通知渠道全部在页面设置中配置，凭据加密后保存在 SQLite。
 
 `docker-start.sh` 通过参数接收镜像 tag。基础镜像网络受限时，可以在命令前临时传入 `CRAZYGAME_NODE_IMAGE` / `CRAZYGAME_PYTHON_IMAGE` 覆盖镜像源，无需保存配置文件。
+
+Docker 重建容器不会删除配置：SQLite 数据库和 `.app-secret` 位于 `crazygame_data` volume 中。更换镜像 tag 或执行 `--no-cache` 构建也不会重置已保存的 AI 配置。
 
 ## 项目结构
 

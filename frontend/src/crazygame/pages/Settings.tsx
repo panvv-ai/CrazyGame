@@ -117,9 +117,26 @@ export function SettingsPage() {
     setError('')
     setMessage('')
     try {
-      setCapabilities(await api.testAICapabilities())
+      setCapabilities(await api.testAICapabilities(settings.ai))
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t('common.unknownError'))
+      const code = reason instanceof Error ? reason.message : ''
+      setError(
+        code === 'ai_not_configured'
+          ? t('ai.notConfigured')
+          : code === 'ai_auth_failed'
+          ? t('ai.authFailed')
+          : code === 'ai_rate_limited'
+            ? t('ai.rateLimited')
+            : code === 'ai_unreachable' || code === 'ai_timeout'
+              ? t('ai.unreachable')
+              : code === 'ai_provider_error' ||
+                  code === 'ai_invalid_response' ||
+                  code === 'ai_config_failed'
+                ? t('ai.configFailed')
+              : reason instanceof Error
+                ? reason.message
+                : t('common.unknownError')
+      )
     } finally {
       setTestingCapabilities(false)
     }
