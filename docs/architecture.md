@@ -12,9 +12,10 @@ public market data
   -> price and daily-change alerts
   -> Feishu / Aliyun SMS delivery
   -> daily AI portfolio review
+  -> on-demand AI instrument diagnosis and multi-turn ask-stock
 ```
 
-There is no account system, login page, registration flow, multi-user permission model, paper trading, strategy engine, or AI research workspace.
+There is no account system, login page, registration flow, multi-user permission model, paper trading, strategy engine, or multi-agent strategy platform.
 
 ## Backend layout
 
@@ -22,8 +23,6 @@ There is no account system, login page, registration flow, multi-user permission
 backend/
 ├── main.py
 ├── requirements.txt
-├── requirements-dev.txt
-├── pyproject.toml
 ├── src/crazygame/
 │   ├── api/
 │   │   ├── app.py
@@ -46,6 +45,13 @@ backend/
 │   │   └── fund_quotes.py
 │   └── services/
 │       ├── ai.py
+│       ├── ai_agent.py
+│       ├── ai_chat.py
+│       ├── ai_context.py
+│       ├── ai_image.py
+│       ├── ai_news.py
+│       ├── ai_report.py
+│       ├── ai_technical.py
 │       ├── alert_service.py
 │       ├── catalog.py
 │       ├── daily_review.py
@@ -54,7 +60,6 @@ backend/
 │       ├── notifications.py
 │       ├── scheduler.py
 │       └── senders.py
-└── tests/
 ```
 
 ## Data model
@@ -65,6 +70,7 @@ backend/
 - `Holding` stores the single lightweight portfolio.
 - `AlertRule`, `AlertHit`, and `NotificationDelivery` implement alert evaluation and durable delivery.
 - `DailyReview` stores the once-per-day AI portfolio review.
+- `AIReport`, `AIChatSession`, `AIChatMessage`, and `MarketIntel` store on-demand reports, ask-stock history, and explainable news evidence.
 - `AppSetting` stores language, AI, and report settings.
 
 SQLite lives at `DATA_DIR/crazygame.sqlite3`.
@@ -109,6 +115,10 @@ One APScheduler instance runs:
 
 Successful review results are immutable for that trade date. A retry never re-calls the AI.
 
+AI reports and ask-stock turns are demand-driven. Every tool is bound to one server-resolved listed instrument. Technical indicators are computed deterministically, stale or missing evidence caps confidence, and only public progress plus final answer text are streamed. Open-end funds are excluded from AI diagnosis.
+
+News defaults to Eastmoney public article, announcement, industry, and concept endpoints. A 15-minute SQLite cache allows fail-open degradation. Tavily or Bocha can be configured as optional enhancement; neither is required for the free default path.
+
 ## Frontend layout
 
 ```text
@@ -124,7 +134,7 @@ frontend/src/crazygame/
 └── types.ts
 ```
 
-The frontend is a five-page application:
+The frontend keeps five primary navigation pages:
 
 - Overview
 - Watchlist
@@ -133,6 +143,8 @@ The frontend is a five-page application:
 - Alerts
 
 Settings is available from the header. The interface is dark-only and supports `zh-CN` and `en-US`.
+
+The AI workspace is available from the top bar and instrument details. It contains ask-stock sessions and structured report history without adding a sixth bottom-navigation item.
 
 ## Runtime
 

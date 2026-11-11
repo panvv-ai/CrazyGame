@@ -5,12 +5,12 @@ services:
     build:
       context: .
       args:
+        # Shell or project-root .env value. Docker tags are never auto-detected.
         CRAZYGAME_TAG: ${CRAZYGAME_TAG:-latest}
+        NODE_IMAGE: ${CRAZYGAME_NODE_IMAGE:-node:22-alpine}
+        PYTHON_IMAGE: ${CRAZYGAME_PYTHON_IMAGE:-python:3.11-slim}
     image: crazygame:${CRAZYGAME_TAG:-latest}
     restart: unless-stopped
-    env_file:
-      - path: .env
-        required: false
     environment:
       DATA_DIR: /app/data
       TZ: Asia/Shanghai

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   BellRing,
   GripVertical,
+  ImagePlus,
   LineChart as LineChartIcon,
   Plus,
   Search,
@@ -11,6 +12,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 
 import { api } from '../api'
+import { aiApi } from '../ai'
 import { DataState } from '../components/DataState'
 import { InstrumentDetailModal } from '../components/InstrumentDetailModal'
 import {
@@ -34,7 +36,12 @@ import {
   scopesForKind,
   searchFiltersForScope,
 } from '../scopes'
-import type { Instrument, WatchlistItem, WatchlistKind } from '../types'
+import type {
+  Instrument,
+  RecognizedInstrument,
+  WatchlistItem,
+  WatchlistKind,
+} from '../types'
 
 export function WatchlistPage() {
   const { t } = useTranslation()
@@ -51,6 +58,9 @@ export function WatchlistPage() {
   const [chartItem, setChartItem] = useState<WatchlistItem | null>(null)
   const [draggingId, setDraggingId] = useState<number | null>(null)
   const [dragOverId, setDragOverId] = useState<number | null>(null)
+  const [recognized, setRecognized] = useState<RecognizedInstrument[]>([])
+  const [selectedCodes, setSelectedCodes] = useState<string[]>([])
+  const [recognizing, setRecognizing] = useState(false)
 
   async function load(showLoading = false) {
     if (showLoading) setLoading(true)
@@ -142,6 +152,38 @@ export function WatchlistPage() {
     }
   }
 
+  async function recognize(file: File) {
+    setRecognizing(true)
+    setError('')
+    try {
+      const payload = await aiApi.recognizeImage(file)
+      setRecognized(payload.items)
+      setSelectedCodes(
+        payload.items.filter((item) => item.instrument).map((item) => item.code)
+      )
+    } catch {
+      setError(t('watchlist.imageFailed'))
+    } finally {
+      setRecognizing(false)
+    }
+  }
+
+  async function addRecognized() {
+    const chosen = recognized.filter(
+      (item) => item.instrument && selectedCodes.includes(item.code)
+    )
+    for (const item of chosen) {
+      if (!item.instrument) continue
+      await api.addWatchlist({
+        ...item.instrument,
+        kind: item.instrument.asset_type === 'stock' ? 'stock' : 'fund',
+      })
+    }
+    setRecognized([])
+    setSelectedCodes([])
+    await load()
+  }
+
   async function remove(item: WatchlistItem) {
     if (!window.confirm(t('watchlist.removeConfirm'))) return
     await api.removeWatchlist(item.id)
@@ -216,6 +258,25 @@ export function WatchlistPage() {
             placeholder={t('common.search')}
             autoComplete="off"
           />
+          <button
+            className="icon-button"
+            onClick={() => document.getElementById('watch-image')?.click()}
+            disabled={recognizing}
+            aria-label={t('watchlist.recognize')}
+          >
+            <ImagePlus size={16} />
+          </button>
+          <input
+            id="watch-image"
+            type="file"
+            hidden
+            accept=".jpg,.jpeg,.png,.webp,.gif"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void recognize(file)
+              event.target.value = ''
+            }}
+          />
         </div>
         <p>{t('watchlist.addHint')}</p>
         {searching ? <Loading /> : null}
@@ -246,6 +307,47 @@ export function WatchlistPage() {
           </div>
         ) : !searching && query.trim() && !error ? (
           <p className="muted-copy">{t('watchlist.noSearchResults')}</p>
+        ) : null}
+        {recognized.length ? (
+          <div className="recognized-panel">
+            <div className="section-head">
+              <p>{t('watchlist.recognized')}</p>
+              <Button
+                onClick={() => void addRecognized()}
+                disabled={!selectedCodes.length}
+              >
+                <Plus size={15} />
+                {t('watchlist.addSelected')}
+              </Button>
+            </div>
+            {recognized.map((item) => (
+              <label key={item.code} className="recognized-row">
+                <input
+                  type="checkbox"
+                  checked={selectedCodes.includes(item.code)}
+                  disabled={!item.instrument}
+                  onChange={(event) =>
+                    setSelectedCodes((current) =>
+                      event.target.checked
+                        ? [...current, item.code]
+                        : current.filter((code) => code !== item.code)
+                    )
+                  }
+                />
+                <span>
+                  <strong>{item.name || item.code}</strong>
+                  <small>
+                    {item.code} · {t(`ai.imageConfidence.${item.confidence}`)}
+                  </small>
+                </span>
+                {item.instrument ? (
+                  <Badge tone="accent">{t(`asset.${item.instrument.asset_type}`)}</Badge>
+                ) : (
+                  <Badge tone="warn">{t('watchlist.imageUnresolved')}</Badge>
+                )}
+              </label>
+            ))}
+          </div>
         ) : null}
       </GlassPanel>
 

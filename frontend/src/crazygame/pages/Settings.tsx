@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, FlaskConical, Plus, ShieldAlert, Trash2 } from 'lucide-react'
+import { Check, FlaskConical, Plus, ShieldAlert, Sparkles, Trash2 } from 'lucide-react'
 
 import { api } from '../api'
 import {
@@ -19,7 +19,8 @@ import type { AppSettings, NotifyChannel } from '../types'
 
 const emptySettings: AppSettings = {
   language: 'zh-CN',
-  ai: { base_url: '', api_key: '', model: '' },
+  ai: { base_url: '', api_key: '', model: '', vision_model: '' },
+  news: { enabled: true, provider: 'eastmoney', api_key: '' },
   daily_review_channel_ids: [],
   daily_review_enabled: true,
 }
@@ -35,6 +36,13 @@ export function SettingsPage() {
   const [channelType, setChannelType] = useState<'feishu' | 'aliyun_sms'>('feishu')
   const [channelName, setChannelName] = useState('')
   const [channelConfig, setChannelConfig] = useState<Record<string, string>>({})
+  const [capabilities, setCapabilities] = useState<{
+    json: boolean
+    tools: boolean
+    stream: boolean
+    vision: boolean
+  } | null>(null)
+  const [testingCapabilities, setTestingCapabilities] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -101,6 +109,36 @@ export function SettingsPage() {
       await load()
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t('common.unknownError'))
+    }
+  }
+
+  async function testCapabilities() {
+    setTestingCapabilities(true)
+    setError('')
+    setMessage('')
+    try {
+      setCapabilities(await api.testAICapabilities(settings.ai))
+    } catch (reason) {
+      const code = reason instanceof Error ? reason.message : ''
+      setError(
+        code === 'ai_not_configured'
+          ? t('ai.notConfigured')
+          : code === 'ai_auth_failed'
+          ? t('ai.authFailed')
+          : code === 'ai_rate_limited'
+            ? t('ai.rateLimited')
+            : code === 'ai_unreachable' || code === 'ai_timeout'
+              ? t('ai.unreachable')
+              : code === 'ai_provider_error' ||
+                  code === 'ai_invalid_response' ||
+                  code === 'ai_config_failed'
+                ? t('ai.configFailed')
+              : reason instanceof Error
+                ? reason.message
+                : t('common.unknownError')
+      )
+    } finally {
+      setTestingCapabilities(false)
     }
   }
 
@@ -186,6 +224,92 @@ export function SettingsPage() {
                 }
               />
             </Field>
+            <Field label={t('settings.visionModel')}>
+              <Input
+                value={settings.ai.vision_model}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    ai: { ...current.ai, vision_model: event.target.value },
+                  }))
+                }
+              />
+            </Field>
+            <div className="capability-check">
+              <Button
+                variant="secondary"
+                onClick={() => void testCapabilities()}
+                disabled={testingCapabilities}
+              >
+                <Sparkles size={15} />
+                {testingCapabilities ? t('common.loading') : t('settings.testCapabilities')}
+              </Button>
+              {capabilities ? (
+                <div className="capability-results">
+                  {([
+                    ['json', 'settings.capabilityJson'],
+                    ['tools', 'settings.capabilityTools'],
+                    ['stream', 'settings.capabilityStream'],
+                    ['vision', 'settings.capabilityVision'],
+                  ] as const).map(([key, label]) => (
+                    <Badge key={key} tone={capabilities[key] ? 'success' : 'warn'}>
+                      {t(label)} {capabilities[key] ? '✓' : '×'}
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </GlassPanel>
+
+        <GlassPanel className="settings-card reveal">
+          <p className="eyebrow">{t('settings.newsIntel')}</p>
+          <div className="stack-form">
+            <label className="check-row">
+              <input
+                type="checkbox"
+                checked={settings.news.enabled}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    news: { ...current.news, enabled: event.target.checked },
+                  }))
+                }
+              />
+              {t('settings.enableNews')}
+            </label>
+            <Field label={t('settings.newsProvider')}>
+              <Select
+                value={settings.news.provider}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    news: {
+                      ...current.news,
+                      provider: event.target.value as 'eastmoney' | 'tavily' | 'bocha',
+                    },
+                  }))
+                }
+              >
+                <option value="eastmoney">{t('settings.providerEastmoney')}</option>
+                <option value="tavily">{t('settings.providerTavily')}</option>
+                <option value="bocha">{t('settings.providerBocha')}</option>
+              </Select>
+            </Field>
+            {settings.news.provider !== 'eastmoney' ? (
+              <Field label={t('settings.newsApiKey')}>
+                <Input
+                  type="password"
+                  value={settings.news.api_key}
+                  onChange={(event) =>
+                    setSettings((current) => ({
+                      ...current,
+                      news: { ...current.news, api_key: event.target.value },
+                    }))
+                  }
+                />
+              </Field>
+            ) : null}
           </div>
         </GlassPanel>
 

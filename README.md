@@ -35,6 +35,10 @@ CrazyGame 帮你只关注少数真正认可的股票与基金，看清真实持�
 - **智能提醒**：价格或当日涨跌幅阈值，支持每日一次、冷却时间和交易时段门控。
 - **飞书与短信**：每个提醒可独立选择通知渠道，支持重试和投递状态追踪。
 - **每日持仓健康**：A 股交易日 15:20 自动生成，15:28 失败重试；简报按 Markdown 渲染。
+- **AI 诊股工作台**：按需生成趋势、评分、支撑压力、风险、催化、空仓/持仓建议和操作检查清单。
+- **多轮问股**：围绕一个主标的进行工具驱动分析，支持流式结论、会话恢复和后续追问。
+- **截图识别**：从自选股截图中识别股票或 ETF，经用户确认后加入自选或开始诊股。
+- **高相关热点**：默认使用东方财富公开新闻、公告、行业和概念数据，按相关性与时效排序；可选手动配置 Tavily/Bocha 增强。
 - **双语界面**：默认中文，可随时切换英文；AI 简报和提醒跟随界面语言。
 - **本地部署**：Docker Compose 一条命令启动，默认仅监听 `127.0.0.1`。
 
@@ -48,8 +52,8 @@ CrazyGame 帮你只关注少数真正认可的股票与基金，看清真实持�
 | 场外基金 | 天天基金估值、东方财富净值 |
 | 前端 | React 18、TypeScript、Vite、i18next |
 | 图表 | lightweight-charts |
+| AI | OpenAI 兼容 Chat Completions、DeepSeek Flash/Pro、Tool Calls、流式输出、图片输入 |
 | 通知 | 飞书自定义机器人、阿里云短信 |
-| 测试 | pytest、Vitest |
 | 部署 | Docker Compose |
 
 ## 快速开始
@@ -61,25 +65,47 @@ CrazyGame 帮你只关注少数真正认可的股票与基金，看清真实持�
 - pnpm 10+
 - Docker Desktop（可选）
 
-### 方式一：Docker Compose（推荐）
+### 方式一：一键脚本（推荐）
 
 ```bash
 git clone https://github.com/panvv-ai/CrazyGame.git
 cd CrazyGame
 
-cp config/env.example .env
-# 可选：在 .env 中填写 AI 服务配置
-
-docker compose up -d --build
-docker compose ps
+./docker-start.sh v2
 ```
+
+脚本会：
+
+- 拉取缺失的 Node/Python 基础镜像，并自动重试
+- 构建 `crazygame:v2`
+- 用 `v2` 强制重建容器
+- 等待健康检查后输出访问地址
 
 打开 <http://127.0.0.1:8000>。
 
-默认构建 `crazygame:latest`。需要固定 tag 时：
+其他用法：
 
 ```bash
-CRAZYGAME_TAG=v1 docker compose up -d --build
+./docker-start.sh v3               # 构建并部署新版本
+./docker-start.sh --no-build v2    # 部署已经构建好的镜像
+./docker-start.sh --no-cache v2    # 完全无缓存构建
+./docker-start.sh --dry-run v2     # 只打印步骤，不执行
+```
+
+如果 Docker Hub 元数据下载报 `EOF` 或超时，先配置 Docker Desktop 的 Proxy；临时也可使用可达镜像源：
+
+```bash
+CRAZYGAME_NODE_IMAGE=docker.m.daocloud.io/library/node:22-alpine \
+CRAZYGAME_PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim \
+  ./docker-start.sh v2
+```
+
+传统 Compose 方式仍然可用：
+
+```bash
+docker compose up -d --build
+# 或部署已有镜像
+CRAZYGAME_TAG=v2 docker compose up -d --no-build --force-recreate
 ```
 
 查看日志：
@@ -94,7 +120,7 @@ docker compose logs -f crazygame
 docker compose down
 ```
 
-容器只映射到本机回环地址，SQLite 与凭据密钥保存在 `crazygame_data` volume。根目录 `.env` 已被 Git 忽略，不要把真实 API Key 写进 `config/env.example`。
+容器只映射到本机回环地址，SQLite 与凭据密钥保存在 `crazygame_data` volume。
 
 ### 方式二：本地开发
 
@@ -129,25 +155,22 @@ cd backend && ../.venv/bin/python main.py
 ### 手动构建 Docker 镜像
 
 ```bash
-cp config/env.example .env
-docker build --build-arg CRAZYGAME_TAG=v1 -t crazygame:v1 .
+docker build --build-arg CRAZYGAME_TAG=v2 -t crazygame:v2 .
+CRAZYGAME_TAG=v2 docker compose up -d --no-build --force-recreate
+```
+
+如果不使用 Compose，也可以直接运行：
+
+```bash
 docker run -d \
   --name crazygame \
   --restart unless-stopped \
   -p 127.0.0.1:8000:8000 \
   -v crazygame_data:/app/data \
-  --env-file .env \
-  crazygame:v1
+  crazygame:v2
 ```
 
 打开 <http://127.0.0.1:8000>。
-
-也可以使用统一构建脚本：
-
-```bash
-./scripts/build.sh v1
-# 产物：crazygame:v1
-```
 
 ## 使用方式
 
@@ -183,24 +206,37 @@ ${rule} ${name} ${price} ${change}
 
 服务在 A 股交易日 15:20 生成持仓健康简报。需要先在设置页配置 OpenAI 兼容的 AI 服务和模型。
 
+### 使用 AI 诊股与问股
+
+点击顶栏“AI”进入 AI 工作台。可以：
+
+- 从已添加的股票或 ETF 中选择标的，生成结构化 AI 决策报告。
+- 直接在问股窗口输入代码、名称或问题；明确给出新标的时会切换当前讨论对象。
+- 在行情详情中点击“AI 诊断”或“继续问股”跳转到当前标的。
+- 上传自选股截图，经视觉模型识别后选择标的；识别结果不会自动写入数据库。
+
+AI 诊股首版覆盖 A 股、港股、美股和 A 股场内 ETF。场外基金继续使用现有估值、净值和每日组合简报。
+
+### 配置 DeepSeek 或其他 OpenAI 兼容模型
+
+进入“设置”页面填写以下字段：
+
+- **Base URL**：DeepSeek 官方地址为 `https://api.deepseek.com`。也可以填写完整的 `https://api.deepseek.com/chat/completions`，应用会自动规范化。
+- **API Key**：填写模型服务商控制台生成的 Key。保存后页面只显示掩码，数据库中以密文保存。
+- **模型 ID**：DeepSeek 当前推荐 `deepseek-flash`，支持文本、图片和 Tool Calls；需要纯文本 Pro 模型时使用 `deepseek-v4-pro`。
+- **视觉模型**：留空时继承主模型。使用 DeepSeek Flash 的图片识别能力时，可以同样填写 `deepseek-flash`。
+
+点击“测试 JSON / 工具 / 流式 / 图片”会直接测试页面当前填写的配置，不需要先保存。测试结果会分别显示四项能力；鉴权、限流、网络或模型配置错误会给出明确提示。建议测试通过后再保存。
+
+如果返回 `401`，说明模型服务商拒绝了请求中的 API Key，而不是行情、标的识别或问股数据的问题。请重新生成并填写有效 Key。旧版本曾经在重复保存时叠加加密层；新版会在首次读取时自动恢复并收敛为单层密文，不需要清空数据库。
+
 ## 配置
 
-复制 [`config/env.example`](config/env.example) 为根目录 `.env`，或直接使用环境变量：
+CrazyGame 不提供环境配置文件。首次启动会在 `DATA_DIR` 中自动生成加密密钥，AI 模型、视觉模型、新闻增强和通知渠道全部在页面设置中配置，凭据加密后保存在 SQLite。
 
-`config/env.example` 只包含安全占位符；真实 API Key 请写入被 Git 忽略的 `.env`，或直接在设置页填写。应用会将凭据加密后保存到本地数据库。
+`docker-start.sh` 通过参数接收镜像 tag。基础镜像网络受限时，可以在命令前临时传入 `CRAZYGAME_NODE_IMAGE` / `CRAZYGAME_PYTHON_IMAGE` 覆盖镜像源，无需保存配置文件。
 
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `DATA_DIR` | `./data` | SQLite 与本地密钥目录 |
-| `TZ` | `Asia/Shanghai` | 应用与调度时区 |
-| `CRAZYGAME_TAG` | `latest` | Compose 构建和使用的镜像 tag |
-| `CRAZYGAME_HOST` | `127.0.0.1` | 本地服务监听地址 |
-| `CRAZYGAME_PORT` | `8000` | 本地服务端口 |
-| `APP_SECRET_KEY` | 自动生成 | 加密 AI Key 和通知凭据 |
-| `AI_BASE_URL` | `https://api.openai.com/v1` | OpenAI 兼容 API |
-| `AI_API_KEY` | 空 | AI API Key，也可在设置页填写 |
-| `AI_MODEL` | `gpt-4.1-mini` | 模型标识 |
-| `HTTP_PROXY` / `HTTPS_PROXY` | 空 | 可选行情代理 |
+Docker 重建容器不会删除配置：SQLite 数据库和 `.app-secret` 位于 `crazygame_data` volume 中。更换镜像 tag 或执行 `--no-cache` 构建也不会重置已保存的 AI 配置。
 
 ## 项目结构
 
@@ -209,22 +245,18 @@ ${rule} ${name} ${price} ${change}
 ├── backend/
 │   ├── main.py
 │   ├── requirements.txt
-│   ├── requirements-dev.txt
-│   ├── pyproject.toml
 │   ├── src/crazygame/
 │   │   ├── api/          # FastAPI、依赖和路由
 │   │   ├── core/         # 配置、数据库、密钥、日历
 │   │   ├── domain/       # ORM、schema 和确定性业务规则
 │   │   ├── providers/    # 场外基金数据适配
 │   │   └── services/     # 行情、提醒、通知、AI、调度
-│   └── tests/
 ├── frontend/
 │   ├── src/crazygame/     # React 页面、组件、i18n 和设计系统
 │   └── public/
 ├── marketdata/           # 可复用股票/ETF 行情包
-├── config/env.example
 ├── docs/                 # 架构、设计和英文 README
-├── scripts/build.sh
+├── docker-start.sh       # 一键构建与部署
 ├── compose.yaml
 ├── Dockerfile
 └── Makefile
@@ -238,25 +270,19 @@ ${rule} ${name} ${price} ${change}
 - 默认本地密钥：`DATA_DIR/.app-secret`，权限为 `0600`。
 - AI Key、飞书签名和阿里云 AccessKey 加密后写入 SQLite。
 - API 不会返回完整凭据，只返回掩码。
-- 本项目不会上传持仓、自选或提醒到第三方；只有配置的 AI 服务和通知渠道会接收对应内容。
+- AI 诊股会把当前标的的行情、技术指标、相关新闻以及当前持仓成本发送到你配置的 AI 服务，用于生成空仓/持仓建议；不配置 AI 时不会发生此请求。
+- 新闻与公告检索会访问东方财富公开接口；关闭 `NEWS_ENABLED` 或设置页新闻开关后停止该请求。
+- 图片识别只在内存中处理上传图片，并将图片发送至配置的视觉模型，不保存原图。
+- 只有在用户确认后，截图识别出的标的才会加入自选或用于聊天。
 - 不要把无认证服务直接暴露到公网。Compose 默认只发布到 `127.0.0.1`。
 
-## 开发与测试
+## 开发与构建
 
 ```bash
-make test
-
+make setup
 cd frontend
 pnpm check:i18n
-pnpm test
 pnpm build
-```
-
-单独运行：
-
-```bash
-cd backend && ../.venv/bin/python -m pytest tests -q
-.venv/bin/python -m pytest marketdata/tests -q
 ```
 
 ## 已知限制
@@ -264,6 +290,9 @@ cd backend && ../.venv/bin/python -m pytest tests -q
 - 只支持 A 股场内 ETF，不包含港股和美股 ETF。
 - 场外基金无法提供连续交易价格，估值与正式净值必须区分。
 - 公开行情源没有 SLA，可能临时不可用。
+- 公开新闻和热点源没有 SLA；不可用时报告会标注数据限制，不会编造热点。
+- AI 诊股和问股按需触发，不会自动分析整个自选列表。
+- 首版不支持场外基金 AI 诊股或股票横向比较。
 - 目前只有深色主题。
 - AI 输出只作为个人研究辅助，不会自动交易。
 
@@ -272,3 +301,5 @@ cd backend && ../.venv/bin/python -m pytest tests -q
 Copyright © 2026 CrazyGame contributors.
 
 本项目采用 [MIT License](LICENSE)。
+
+参考项目的架构与交互设计归属见 [第三方声明](docs/third-party-notices.md)。

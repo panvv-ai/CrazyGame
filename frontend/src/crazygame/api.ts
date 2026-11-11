@@ -22,7 +22,16 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     let detail = `${response.status} ${response.statusText}`
     try {
       const payload = await response.json()
-      detail = payload.detail ?? detail
+      const payloadDetail = payload.detail
+      if (typeof payloadDetail === 'string') {
+        detail = payloadDetail
+      } else if (
+        payloadDetail &&
+        typeof payloadDetail === 'object' &&
+        typeof payloadDetail.code === 'string'
+      ) {
+        detail = payloadDetail.code
+      }
     } catch {
       // Keep the status text.
     }
@@ -121,6 +130,19 @@ export const api = {
   settings: () => request<AppSettings>('/settings'),
   updateSettings: (payload: AppSettings) =>
     request<AppSettings>('/settings', { method: 'PUT', body: JSON.stringify(payload) }),
+  testAICapabilities: (payload: AppSettings['ai']) =>
+    request<{
+      json: boolean
+      tools: boolean
+      stream: boolean
+      vision: boolean
+      ok: boolean
+      code: string
+      errors: Record<string, string>
+    }>(
+      '/settings/ai/test',
+      { method: 'POST', body: JSON.stringify(payload) }
+    ),
 
   dailyReviews: () => request<{ items: DailyReview[] }>('/reviews/daily'),
   runDailyReview: () => request<{ status: string; id?: number }>('/reviews/daily/run', { method: 'POST' }),

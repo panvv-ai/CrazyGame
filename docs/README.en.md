@@ -35,6 +35,10 @@ There is no account, login, registration, or permission system. SQLite stores ap
 - Price and daily-change alerts with cooldown and market-hours gating.
 - Feishu bot and Alibaba Cloud SMS delivery with retry tracking.
 - Daily portfolio review after the A-share close, rendered as Markdown.
+- On-demand AI diagnosis with trend, score, support/resistance, risks, catalysts, and position-specific observations.
+- Multi-turn ask-stock with streamed answers, tool progress, session recovery, and one server-bound active instrument.
+- Screenshot recognition for stocks and mainland-listed ETFs with explicit user confirmation.
+- Ranked hotspots from free Eastmoney news and announcements, with optional Tavily or Bocha enhancement.
 - Chinese and English interfaces, with reports and alerts following the UI language.
 - Local and Docker Compose deployment.
 
@@ -48,25 +52,47 @@ There is no account, login, registration, or permission system. SQLite stores ap
 | Market data | Tencent, Sina, Eastmoney, Stooq |
 | Frontend | React 18, TypeScript, Vite, i18next |
 | Charts | lightweight-charts |
-| Tests | pytest, Vitest |
 
 ## Quick start
 
 Requirements: Docker Desktop for the recommended setup, or Python 3.11, Node.js 22+, and pnpm 10+ for local development.
 
-### Docker Compose (recommended)
+### One-command script (recommended)
 
 ```bash
 git clone https://github.com/panvv-ai/CrazyGame.git
 cd CrazyGame
-cp config/env.example .env
-docker compose up -d --build
-docker compose ps
+./docker-start.sh v2
 ```
 
-Open <http://127.0.0.1:8000>. View logs with `docker compose logs -f crazygame` and stop with `docker compose down`.
+The script pulls missing base images with retries, builds `crazygame:v2`, recreates the container, and waits for the health check.
 
-The default image is `crazygame:latest`. Override the tag with `CRAZYGAME_TAG=v1 docker compose up -d --build`.
+Open <http://127.0.0.1:8000>.
+
+Other modes:
+
+```bash
+./docker-start.sh v3               # build and deploy a new tag
+./docker-start.sh --no-build v2    # deploy an existing image
+./docker-start.sh --no-cache v2    # build without cache
+./docker-start.sh --dry-run v2     # print commands only
+```
+
+If Docker Hub metadata requests fail with `EOF` or timeouts, configure Docker Desktop Proxies or use reachable base-image mirrors:
+
+```bash
+CRAZYGAME_NODE_IMAGE=docker.m.daocloud.io/library/node:22-alpine \
+CRAZYGAME_PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim \
+  ./docker-start.sh v2
+```
+
+Traditional Compose remains available:
+
+```bash
+docker compose up -d --build
+# Existing image:
+CRAZYGAME_TAG=v2 docker compose up -d --no-build --force-recreate
+```
 
 ### Local development
 
@@ -86,20 +112,24 @@ Open <http://127.0.0.1:5183>.
 ### Build the image manually
 
 ```bash
-cp config/env.example .env
-docker build --build-arg CRAZYGAME_TAG=v1 -t crazygame:v1 .
+docker build --build-arg CRAZYGAME_TAG=v2 -t crazygame:v2 .
+CRAZYGAME_TAG=v2 docker compose up -d --no-build --force-recreate
+```
+
+To run without Compose:
+
+```bash
 docker run -d \
   --name crazygame \
   --restart unless-stopped \
   -p 127.0.0.1:8000:8000 \
   -v crazygame_data:/app/data \
-  --env-file .env \
-  crazygame:v1
+  crazygame:v2
 ```
 
 Open <http://127.0.0.1:8000>.
 
-The service binds to loopback by default. `.env` is ignored by Git; keep real API keys out of `config/env.example`.
+The service binds to loopback by default.
 
 ## Usage
 
@@ -107,29 +137,37 @@ In the Watchlist page, choose Stocks or Funds, then select A-shares, Hong Kong, 
 
 Holdings record actual quantities, average costs, and unrealized P/L. They are the only source used by the daily health review. Groups do not record real positions; they combine watched instruments with target weights so you can review a hypothetical basket and its long-term curve. If you only need to analyze real assets, you can ignore groups.
 
+Open the AI workspace from the top bar to ask follow-up questions or generate a structured report. Instrument quote details also provide direct diagnosis and chat actions. AI diagnosis supports A-share, Hong Kong, and US stocks plus mainland-listed ETFs. Open-end funds remain on their existing NAV and daily-review paths.
+
+### Configure DeepSeek or another OpenAI-compatible model
+
+Open Settings and fill in:
+
+- **Base URL**: use `https://api.deepseek.com` for DeepSeek. The full `https://api.deepseek.com/chat/completions` URL is also accepted and normalized automatically.
+- **API key**: use a key generated in the provider console. It is masked in the UI and encrypted in SQLite.
+- **Model ID**: `deepseek-flash` is the current DeepSeek recommendation and supports text, images, and tool calls. Use `deepseek-v4-pro` for the text-only Pro model.
+- **Vision model**: leave it empty to inherit the main model. For DeepSeek Flash image recognition, use `deepseek-flash`.
+
+The JSON, tools, streaming, and vision capability test uses the values currently entered in the form, even before saving. An authentication, rate-limit, network, or model configuration failure is reported explicitly. Save the configuration after the test succeeds.
+
+An HTTP `401` means the provider rejected the API key. Regenerate the key in the provider console. Older versions could repeatedly encrypt a masked saved key; the current version automatically unwraps those legacy values and rewrites them as one encrypted layer, so clearing the database is not required.
+
 ## Configuration
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `DATA_DIR` | `project/data` | SQLite and local key storage |
-| `TZ` | `Asia/Shanghai` | Application and scheduler timezone |
-| `CRAZYGAME_TAG` | `latest` | Compose image tag |
-| `CRAZYGAME_HOST` | `127.0.0.1` | Local bind address |
-| `CRAZYGAME_PORT` | `8000` | Local port |
-| `APP_SECRET_KEY` | generated locally | Encrypt AI and notification credentials |
-| `AI_BASE_URL` | OpenAI-compatible URL | AI endpoint |
-| `AI_API_KEY` | empty | AI key; can also be set in the UI |
-| `AI_MODEL` | `gpt-4.1-mini` | Model identifier |
+CrazyGame does not ship an environment configuration file. It generates the encryption key under `DATA_DIR`, and all model, news, and notification settings are configured in the UI and stored encrypted in SQLite.
+
+`docker-start.sh` receives the image tag as an argument. If Docker Hub access is restricted, pass `CRAZYGAME_NODE_IMAGE` and `CRAZYGAME_PYTHON_IMAGE` for the current command only; no config file is required.
+
+Rebuilding or recreating the container does not remove configuration. The SQLite database and `.app-secret` remain in the `crazygame_data` volume, including across image tag changes and `--no-cache` builds.
 
 ## Project layout
 
 ```text
-backend/       FastAPI app, domain, services, providers, tests
+backend/       FastAPI app, domain, services, providers
 frontend/      React UI, i18n, visual system
 marketdata/    reusable quote and daily-line package
-config/        environment example
 docs/          architecture, design language, English README
-scripts/       build helper
+docker-start.sh one-command build and deployment
 ```
 
 See [architecture.md](architecture.md) and [design-language.md](design-language.md).
@@ -139,16 +177,17 @@ See [architecture.md](architecture.md) and [design-language.md](design-language.
 - Database: `DATA_DIR/crazygame.sqlite3`.
 - Local encryption key: `DATA_DIR/.app-secret` with `0600` permissions.
 - Credentials are encrypted and masked in API responses.
+- AI diagnosis sends the active instrument's quote, technical evidence, related news, and current holding cost to the configured AI service.
+- Public news requests go to Eastmoney unless news is disabled.
+- Screenshot bytes are sent to the configured vision model and are not persisted.
 - Do not expose the unauthenticated service directly to the public internet.
 
-## Development
+## Development and build
 
 ```bash
-make test
-
+make setup
 cd frontend
 pnpm check:i18n
-pnpm test
 pnpm build
 ```
 
@@ -157,6 +196,9 @@ pnpm build
 - Mainland-listed ETFs only.
 - Open-end funds do not have continuous trading prices.
 - Public quote endpoints have no SLA.
+- Public news endpoints have no SLA; unavailable hotspots are disclosed rather than invented.
+- AI reports and ask-stock turns run on demand, not for the entire watchlist.
+- The first version excludes open-end fund AI diagnosis and cross-stock comparison.
 - Dark theme only.
 - AI output never executes trades.
 

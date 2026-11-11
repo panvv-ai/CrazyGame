@@ -1,4 +1,7 @@
-FROM node:22-alpine AS frontend-builder
+ARG NODE_IMAGE=node:22-alpine
+ARG PYTHON_IMAGE=python:3.11-slim
+
+FROM ${NODE_IMAGE} AS frontend-builder
 
 WORKDIR /app/frontend
 RUN corepack enable
@@ -10,7 +13,7 @@ COPY frontend/ ./
 RUN pnpm build
 
 
-FROM python:3.11-slim AS runtime
+FROM ${PYTHON_IMAGE} AS runtime
 
 ARG CRAZYGAME_TAG=latest
 

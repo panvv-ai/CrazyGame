@@ -210,6 +210,96 @@ class DailyReview(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
 
 
+class AIReport(Base):
+    """按需生成的单标的 AI 决策报告。"""
+    __tablename__ = "ai_reports"
+    __table_args__ = (
+        Index("ix_ai_reports_instrument_created", "instrument_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    instrument_id: Mapped[int] = mapped_column(
+        ForeignKey("instruments.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(24), default="pending")
+    language: Mapped[str] = mapped_column(String(16), nullable=False)
+    verdict: Mapped[str] = mapped_column(String(16), default="neutral")
+    confidence: Mapped[str] = mapped_column(String(16), default="medium")
+    score: Mapped[int] = mapped_column(Integer, default=50)
+    title: Mapped[str] = mapped_column(String(255), default="")
+    content_markdown: Mapped[str] = mapped_column(Text, default="")
+    report_json: Mapped[str] = mapped_column(Text, default="{}")
+    context_json: Mapped[str] = mapped_column(Text, default="{}")
+    model_label: Mapped[str] = mapped_column(String(120), default="")
+    error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
+    instrument: Mapped[Instrument] = relationship(lazy="joined")
+
+
+class AIChatSession(Base):
+    """单操作者的 AI 问股会话，每个会话只维护一个主讨论标的。"""
+    __tablename__ = "ai_chat_sessions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    active_instrument_id: Mapped[int | None] = mapped_column(
+        ForeignKey("instruments.id", ondelete="SET NULL"), nullable=True
+    )
+    title: Mapped[str] = mapped_column(String(160), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
+    active_instrument: Mapped[Instrument | None] = relationship(lazy="joined")
+    messages: Mapped[list[AIChatMessage]] = relationship(
+        back_populates="session", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class AIChatMessage(Base):
+    """问股会话中持久化的用户可见消息和工具摘要。"""
+    __tablename__ = "ai_chat_messages"
+    __table_args__ = (
+        Index("ix_ai_chat_messages_session_created", "session_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[str] = mapped_column(
+        ForeignKey("ai_chat_sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    metadata_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    session: Mapped[AIChatSession] = relationship(back_populates="messages")
+
+
+class MarketIntel(Base):
+    """新闻、公告和热点证据缓存，支持离线降级与来源追溯。"""
+    __tablename__ = "market_intels"
+    __table_args__ = (
+        UniqueConstraint(
+            "instrument_id",
+            "dedupe_key",
+            name="uq_market_intel_instrument_key",
+        ),
+        Index("ix_market_intels_instrument_fetched", "instrument_id", "fetched_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    instrument_id: Mapped[int | None] = mapped_column(
+        ForeignKey("instruments.id", ondelete="CASCADE"), nullable=True
+    )
+    dedupe_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    source: Mapped[str] = mapped_column(String(120), default="")
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    url: Mapped[str] = mapped_column(Text, default="")
+    published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    relevance_kind: Mapped[str] = mapped_column(String(16), default="macro")
+    relevance_score: Mapped[int] = mapped_column(Integer, default=0)
+    raw_json: Mapped[str] = mapped_column(Text, default="{}")
+
+
 class AppSetting(Base):
     """通用键值配置表，保存语言、AI 和简报等应用设置。"""
     __tablename__ = "app_settings"
