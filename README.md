@@ -65,7 +65,7 @@ CrazyGame 帮你只关注少数真正认可的股票与基金，看清真实持�
 - pnpm 10+
 - Docker Desktop（可选）
 
-### 方式一：Docker Compose（推荐）
+### 方式一：一键脚本（推荐）
 
 ```bash
 git clone https://github.com/panvv-ai/CrazyGame.git
@@ -74,31 +74,42 @@ cd CrazyGame
 cp config/env.example .env
 # 可选：在 .env 中填写 AI 服务配置
 
-docker compose up -d --build
-docker compose ps
+./docker-start.sh v2
 ```
+
+脚本会：
+
+- 在 `.env` 不存在时从 `config/env.example` 创建
+- 拉取缺失的 Node/Python 基础镜像，并自动重试
+- 构建 `crazygame:v2`
+- 用 `v2` 强制重建容器
+- 等待健康检查后输出访问地址
 
 打开 <http://127.0.0.1:8000>。
 
-默认构建并使用 `crazygame:latest`。需要固定 tag 时：
+其他用法：
 
 ```bash
-CRAZYGAME_TAG=v2 docker compose up -d --build
+./docker-start.sh v3               # 构建并部署新版本
+./docker-start.sh --no-build v2    # 部署已经构建好的镜像
+./docker-start.sh --no-cache v2    # 完全无缓存构建
+./docker-start.sh --dry-run v2     # 只打印步骤，不执行
 ```
 
-`CRAZYGAME_TAG` 是 Docker Compose 的变量插值，可来自当前 shell 或项目根目录 `.env`；`config/env.example` 中的值只有复制成根目录 `.env` 后才参与 Compose。Docker 不会自动把较新的 `v2` 镜像识别成 `latest`。
-
-如果已经执行过 `docker build -t crazygame:v2 .`，不需要重新构建：
+如果 Docker Hub 元数据下载报 `EOF` 或超时，先配置 Docker Desktop 的 Proxy；临时也可使用可达镜像源：
 
 ```bash
+CRAZYGAME_NODE_IMAGE=docker.m.daocloud.io/library/node:22-alpine \
+CRAZYGAME_PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim \
+  ./docker-start.sh v2
+```
+
+传统 Compose 方式仍然可用：
+
+```bash
+docker compose up -d --build
+# 或部署已有镜像
 CRAZYGAME_TAG=v2 docker compose up -d --no-build --force-recreate
-```
-
-也可以使用 Makefile：
-
-```bash
-make compose-up TAG=v2     # 构建并启动
-make compose-start TAG=v2  # 仅启动已构建的镜像
 ```
 
 查看日志：
