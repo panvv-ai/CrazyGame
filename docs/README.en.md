@@ -58,33 +58,42 @@ There is no account, login, registration, or permission system. SQLite stores ap
 
 Requirements: Docker Desktop for the recommended setup, or Python 3.11, Node.js 22+, and pnpm 10+ for local development.
 
-### Docker Compose (recommended)
+### One-command script (recommended)
 
 ```bash
 git clone https://github.com/panvv-ai/CrazyGame.git
 cd CrazyGame
 cp config/env.example .env
+./docker-start.sh v2
+```
+
+The script creates `.env` when missing, pulls missing base images with retries, builds `crazygame:v2`, recreates the container, and waits for the health check.
+
+Open <http://127.0.0.1:8000>.
+
+Other modes:
+
+```bash
+./docker-start.sh v3               # build and deploy a new tag
+./docker-start.sh --no-build v2    # deploy an existing image
+./docker-start.sh --no-cache v2    # build without cache
+./docker-start.sh --dry-run v2     # print commands only
+```
+
+If Docker Hub metadata requests fail with `EOF` or timeouts, configure Docker Desktop Proxies or use reachable base-image mirrors:
+
+```bash
+CRAZYGAME_NODE_IMAGE=docker.m.daocloud.io/library/node:22-alpine \
+CRAZYGAME_PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim \
+  ./docker-start.sh v2
+```
+
+Traditional Compose remains available:
+
+```bash
 docker compose up -d --build
-docker compose ps
-```
-
-Open <http://127.0.0.1:8000>. View logs with `docker compose logs -f crazygame` and stop with `docker compose down`.
-
-The default image is `crazygame:latest`. Override the tag with `CRAZYGAME_TAG=v2 docker compose up -d --build`.
-
-`CRAZYGAME_TAG` is Docker Compose interpolation from the shell or project-root `.env`; values in `config/env.example` only participate after that file is copied to `.env`. Docker does not treat a newer `v2` image as `latest` automatically.
-
-If `crazygame:v2` is already built, start it without rebuilding:
-
-```bash
+# Existing image:
 CRAZYGAME_TAG=v2 docker compose up -d --no-build --force-recreate
-```
-
-Or use the Makefile:
-
-```bash
-make compose-up TAG=v2     # build and start
-make compose-start TAG=v2  # start the existing image
 ```
 
 ### Local development
