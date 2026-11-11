@@ -27,27 +27,51 @@ CrazyGame 帮你只关注少数真正认可的股票与基金，看清真实持�
 <table>
   <tr>
     <td width="50%">
-      <img src="docs/images/dashboard.png" alt="CrazyGame 总览页面" width="100%">
+      <img src="docs/images/dashboard.png" alt="总览持仓与长期曲线" width="100%">
     </td>
     <td width="50%">
-      <img src="docs/images/ai-workspace.png" alt="AI 诊股工作台" width="100%">
+      <img src="docs/images/watchlist.png" alt="分区自选与行情状态" width="100%">
     </td>
   </tr>
   <tr>
-    <td align="center">总览与自选行情</td>
-    <td align="center">AI 诊股与多轮问股</td>
+    <td align="center">总览持仓与长期曲线</td>
+    <td align="center">分区自选与行情状态</td>
   </tr>
   <tr>
     <td width="50%">
-      <img src="docs/images/groups.png" alt="加权组合页面" width="100%">
+      <img src="docs/images/groups.png" alt="分类加权组合" width="100%">
     </td>
     <td width="50%">
-      <img src="docs/images/llm-config.png" alt="LLM Config 设置页面" width="100%">
+      <img src="docs/images/holdings.png" alt="轻量持仓与盈亏汇总" width="100%">
     </td>
   </tr>
   <tr>
-    <td align="center">加权组合与长期曲线</td>
-    <td align="center">LLM Config 与能力测试</td>
+    <td align="center">分类加权组合</td>
+    <td align="center">轻量持仓与盈亏汇总</td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/images/alerts.png" alt="价格提醒与命中记录" width="100%">
+    </td>
+    <td width="50%">
+      <img src="docs/images/ai-workspace.png" alt="AI 问股与上下文诊断" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">价格提醒与命中记录</td>
+    <td align="center">AI 问股与上下文诊断</td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/images/llm-config.png" alt="LLM 配置与能力测试" width="100%">
+    </td>
+    <td width="50%">
+      <img src="docs/images/notification-channels.png" alt="飞书与短信通知渠道" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">LLM 配置与能力测试</td>
+    <td align="center">飞书与短信通知渠道</td>
   </tr>
 </table>
 

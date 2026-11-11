@@ -27,27 +27,51 @@ CrazyGame is a local, single-user application with no account, login, registrati
 <table>
   <tr>
     <td width="50%">
-      <img src="images/dashboard.png" alt="CrazyGame overview" width="100%">
+      <img src="images/dashboard.png" alt="Portfolio overview and long-term curve" width="100%">
     </td>
     <td width="50%">
-      <img src="images/ai-workspace.png" alt="AI diagnosis workspace" width="100%">
+      <img src="images/watchlist.png" alt="Scoped watchlist and market status" width="100%">
     </td>
   </tr>
   <tr>
-    <td align="center">Overview and watchlist quotes</td>
-    <td align="center">AI diagnosis and multi-turn chat</td>
+    <td align="center">Portfolio overview and long-term curve</td>
+    <td align="center">Scoped watchlist and market status</td>
   </tr>
   <tr>
     <td width="50%">
-      <img src="images/groups.png" alt="Weighted groups" width="100%">
+      <img src="images/groups.png" alt="Category-scoped weighted groups" width="100%">
     </td>
     <td width="50%">
-      <img src="images/llm-config.png" alt="LLM Config settings" width="100%">
+      <img src="images/holdings.png" alt="Lightweight holdings and P/L summary" width="100%">
     </td>
   </tr>
   <tr>
-    <td align="center">Weighted groups and long-term curves</td>
-    <td align="center">LLM Config and capability checks</td>
+    <td align="center">Category-scoped weighted groups</td>
+    <td align="center">Lightweight holdings and P/L summary</td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="images/alerts.png" alt="Price alerts and hit history" width="100%">
+    </td>
+    <td width="50%">
+      <img src="images/ai-workspace.png" alt="AI chat with portfolio context" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">Price alerts and hit history</td>
+    <td align="center">AI chat with portfolio context</td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="images/llm-config.png" alt="LLM configuration and capability checks" width="100%">
+    </td>
+    <td width="50%">
+      <img src="images/notification-channels.png" alt="Feishu and SMS notification channels" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">LLM configuration and capability checks</td>
+    <td align="center">Feishu and SMS notification channels</td>
   </tr>
 </table>
 
