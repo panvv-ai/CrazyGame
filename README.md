@@ -171,13 +171,6 @@ docker run -d \
 
 打开 <http://127.0.0.1:8000>。
 
-也可以使用统一构建脚本：
-
-```bash
-./scripts/build.sh v1
-# 产物：crazygame:v1
-```
-
 ## 使用方式
 
 ### 添加自选
@@ -248,7 +241,6 @@ CrazyGame 不提供环境配置文件。首次启动会在 `DATA_DIR` 中自动�
 ├── marketdata/           # 可复用股票/ETF 行情包
 ├── docs/                 # 架构、设计和英文 README
 ├── docker-start.sh       # 一键构建与部署
-├── scripts/build.sh
 ├── compose.yaml
 ├── Dockerfile
 └── Makefile
