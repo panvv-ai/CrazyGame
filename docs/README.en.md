@@ -1,11 +1,12 @@
 # CrazyGame
 
-**A local-first portfolio observatory with AI decision support.**
+**A local-first portfolio observatory with AI decision support for PC Web and Android.**
 
 <p align="center">
   <img alt="Python 3.11" src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white">
   <img alt="Node.js 22+" src="https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white">
   <img alt="React 18" src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white">
+  <img alt="Android 8.0+" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white">
   <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-yellow.svg">
 </p>
 
@@ -13,7 +14,16 @@
   <a href="../README.md">简体中文</a> | <a href="README.en.md">English</a>
 </p>
 
-CrazyGame helps you follow a small set of stocks and funds you genuinely care about, understand allocation and risk, and use AI to organize possible next steps. Data, alerts, and configuration stay local.
+<p align="center">
+  <a href="https://github.com/panvv-ai/CrazyGame/releases/latest/download/CrazyGame_1.apk">
+    <img alt="Download Android APK" src="https://img.shields.io/badge/Android-Download_APK-3DDC84?logo=android&logoColor=white&style=for-the-badge">
+  </a>
+  <a href="https://github.com/panvv-ai/CrazyGame/releases">
+    <img alt="View all releases" src="https://img.shields.io/badge/GitHub-Releases-181717?logo=github&logoColor=white&style=for-the-badge">
+  </a>
+</p>
+
+CrazyGame helps you follow a small set of stocks and funds you genuinely care about, understand allocation and risk, and use AI to organize possible next steps. Data, alerts, and configuration stay local, and the app runs independently on PC Web or Android.
 
 The interface uses layered light fields and compact control rails: the ambient background shifts subtly with scrolling, while primary actions stay available in the first viewport. AI diagnosis uses a single-screen layout with its composer always in view.
 
@@ -21,6 +31,42 @@ CrazyGame is a local, single-user application with no account, login, registrati
 
 > [!IMPORTANT]
 > Quotes come from public web endpoints, not licensed exchange feeds. Data may be delayed, rate-limited, or changed; intraday open-end fund values are estimates, and official NAV governs returns.
+
+## Android app
+
+The Android app runs entirely on your phone. It does not require a PC, Docker, or a local network connection. PC and Android keep separate local databases and do not synchronize automatically; transfer data explicitly with a password-encrypted package when needed.
+
+<p align="center">
+  <a href="https://github.com/panvv-ai/CrazyGame/releases/latest/download/CrazyGame_1.apk"><strong>Download the latest CrazyGame_1.apk</strong></a>
+  ·
+  <a href="https://github.com/panvv-ai/CrazyGame/releases">View releases and SHA-256</a>
+</p>
+
+<table>
+  <tr>
+    <td width="33%">
+      <img src="images/mobile-phase2/overview-390.png" alt="Android overview" width="100%">
+    </td>
+    <td width="33%">
+      <img src="images/mobile-phase2/watchlist-390.png" alt="Android watchlist" width="100%">
+    </td>
+    <td width="33%">
+      <img src="images/mobile-phase2/ai-390.png" alt="Android AI chat" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">Overview and holdings summary</td>
+    <td align="center">Touch-friendly market lists</td>
+    <td align="center">AI chat with keyboard-aware layout</td>
+  </tr>
+</table>
+
+- **Standalone runtime:** Android 8.0+ with no Windows, Docker, or LAN dependency.
+- **Current platform:** Android only; iOS is not supported yet.
+- **Local-first data:** Market state, watchlists, groups, holdings, alerts, and settings stay on the phone.
+- **Native capabilities:** System notifications, WorkManager background checks, haptics, and Android back navigation.
+- **Complete workflow:** Overview, watchlist, groups, holdings, alerts, AI diagnosis, and AI chat.
+- **Portable data:** PC and Android accept the same encrypted `.crazygame` import/export package.
 
 ## Features
 
@@ -105,6 +151,7 @@ CrazyGame is a local, single-user application with no account, login, registrati
 | Charts | lightweight-charts |
 | AI | OpenAI-compatible Chat Completions, Tool Calls, streaming, and image input |
 | Notifications | Feishu bot and Alibaba Cloud SMS |
+| Android | Kotlin, Android WebView, SQLite, WorkManager, and Android Keystore |
 | Deployment | Docker Compose |
 
 ## Quick start
@@ -118,6 +165,29 @@ cd CrazyGame
 ```
 
 The script builds and starts the container. Open <http://127.0.0.1:8000> when it completes.
+
+### Android installation
+
+1. Download the latest `CrazyGame_1.apk` from [GitHub Releases](https://github.com/panvv-ai/CrazyGame/releases). The release page also provides a `.sha256` checksum.
+2. Allow your browser or file manager to install apps from an unknown source, then open the APK to install it.
+3. Configure LLM access, notification channels, and instruments as needed. Android and PC data remain independent.
+
+> [!NOTE]
+> APKs are distributed through GitHub Releases and are not committed to the source repository. When a `.sha256` file is available, verify the downloaded APK before installing.
+
+### Android development build
+
+Android and PC Web use the same React source, while each runtime stores its own local business data.
+
+```bash
+make android-debug
+make android-release
+```
+
+The debug APK is generated at `android/app/build/outputs/apk/debug/app-debug.apk`.
+Signed releases are built by GitHub Actions from `mobile-v*` tags. See
+[Android Development](mobile-android-development.md) for the local toolchain and
+signing setup.
 
 ## Configuration
 
@@ -138,6 +208,7 @@ Notification channels also support "test before saving." Alert frequency is sele
 ├── frontend/
 │   ├── src/crazygame/   # React UI, components, i18n, and visual system
 │   └── public/
+├── android/             # Kotlin WebView, local storage, notifications, and background work
 ├── marketdata/          # Reusable quote and daily-line package
 ├── docs/                # Architecture, design language, and READMEs
 ├── docker-start.sh      # One-command build and deployment
