@@ -14,6 +14,7 @@ from src.crazygame.api.routes.market import public_router, router
 from src.crazygame.api.routes.portfolio import router as portfolio_router
 from src.crazygame.api.routes.reviews import router as reviews_router
 from src.crazygame.api.routes.settings import router as settings_router
+from src.crazygame.api.routes.transfer import router as transfer_router
 from src.crazygame.core.config import AppConfig
 from src.crazygame.core.database import (
     build_engine,
@@ -93,6 +94,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     app.include_router(alerts_router, prefix="/api/alerts")
     app.include_router(reviews_router, prefix="/api/reviews/daily")
     app.include_router(ai_router, prefix="/api/ai")
+    app.include_router(transfer_router, prefix="/api/transfer")
 
     static_dir = Path(__file__).resolve().parents[3] / "static"
     if static_dir.exists():

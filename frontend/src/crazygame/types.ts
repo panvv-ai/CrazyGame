@@ -19,6 +19,7 @@ export interface Instrument {
   asset_type: AssetType
   currency: string
   quote_mode: 'realtime' | 'estimated' | 'nav'
+  quote_id?: string
 }
 
 export interface Quote {
@@ -143,7 +144,7 @@ export interface AlertHit {
 export interface NotifyChannel {
   id: number
   name: string
-  type: 'feishu' | 'aliyun_sms'
+  type: 'feishu' | 'aliyun_sms' | 'local'
   config: Record<string, unknown>
   enabled: boolean
 }

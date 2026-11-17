@@ -5,6 +5,18 @@ import type {
   AISseEvent,
   RecognizedInstrument,
 } from './types'
+import {
+  mobileChatStream,
+  mobileDeleteReport,
+  mobileDeleteSession,
+  mobileReport,
+  mobileReports,
+  mobileReportStream,
+  mobileRecognizeImage,
+  mobileSession,
+  mobileSessions,
+} from './mobileApi'
+import { isNativeCrazyGame } from './native'
 
 async function jsonRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
@@ -113,6 +125,22 @@ async function streamRequest(
   onEvent: (event: AISseEvent) => void,
   signal?: AbortSignal
 ): Promise<void> {
+  if (isNativeCrazyGame()) {
+    if (path === '/ai/chat/stream') {
+      return mobileChatStream(
+        body as {
+          message: string
+          session_id?: string
+          instrument_id?: number
+        },
+        onEvent,
+        signal
+      )
+    }
+    if (path === '/ai/reports/stream') {
+      return mobileReportStream(Number(body.instrument_id), onEvent, signal)
+    }
+  }
   const response = await fetch(`/api${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -156,22 +184,40 @@ export const aiApi = {
     ),
 
   sessions: () =>
-    jsonRequest<{ items: AIChatSession[] }>('/ai/chat/sessions'),
+    isNativeCrazyGame()
+      ? Promise.resolve(mobileSessions() as { items: AIChatSession[] })
+      : jsonRequest<{ items: AIChatSession[] }>('/ai/chat/sessions'),
   session: (id: string) =>
-    jsonRequest<AIChatSessionDetail>(`/ai/chat/sessions/${id}`),
+    isNativeCrazyGame()
+      ? Promise.resolve(mobileSession(id) as AIChatSessionDetail)
+      : jsonRequest<AIChatSessionDetail>(`/ai/chat/sessions/${id}`),
   deleteSession: (id: string) =>
-    jsonRequest<{ ok: boolean }>(`/ai/chat/sessions/${id}`, { method: 'DELETE' }),
+    isNativeCrazyGame()
+      ? Promise.resolve(mobileDeleteSession(id))
+      : jsonRequest<{ ok: boolean }>(`/ai/chat/sessions/${id}`, { method: 'DELETE' }),
 
   reports: (instrumentId?: number, limit = 30) => {
     const params = new URLSearchParams({ limit: String(limit) })
     if (instrumentId) params.set('instrument_id', String(instrumentId))
-    return jsonRequest<{ items: AIReportRecord[] }>(`/ai/reports?${params}`)
+    return isNativeCrazyGame()
+      ? Promise.resolve(
+          mobileReports(instrumentId, limit) as { items: AIReportRecord[] }
+        )
+      : jsonRequest<{ items: AIReportRecord[] }>(`/ai/reports?${params}`)
   },
-  report: (id: number) => jsonRequest<AIReportRecord>(`/ai/reports/${id}`),
+  report: (id: number) =>
+    isNativeCrazyGame()
+      ? Promise.resolve(mobileReport(id))
+      : jsonRequest<AIReportRecord>(`/ai/reports/${id}`),
   deleteReport: (id: number) =>
-    jsonRequest<{ ok: boolean }>(`/ai/reports/${id}`, { method: 'DELETE' }),
+    isNativeCrazyGame()
+      ? Promise.resolve(mobileDeleteReport(id))
+      : jsonRequest<{ ok: boolean }>(`/ai/reports/${id}`, { method: 'DELETE' }),
 
   recognizeImage: async (file: File) => {
+    if (isNativeCrazyGame()) {
+      return mobileRecognizeImage(file)
+    }
     const form = new FormData()
     form.append('file', file)
     return jsonRequest<{ items: RecognizedInstrument[] }>(

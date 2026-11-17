@@ -2,34 +2,33 @@
   color-scheme: dark;
   font-family: "Manrope Variable", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   font-synthesis: none;
-  --bg: #050811;
-  --bg-soft: #0a0f1d;
-  --panel: rgba(16, 23, 41, 0.62);
-  --panel-strong: rgba(18, 26, 47, 0.86);
-  --line: rgba(255, 255, 255, 0.085);
-  --line-strong: rgba(255, 255, 255, 0.14);
-  --text: #f7f9ff;
-  --muted: rgba(226, 232, 255, 0.54);
-  --faint: rgba(226, 232, 255, 0.32);
-  --blue: #8ea7ff;
-  --blue-strong: #6f8cff;
-  --cyan: #81d8e8;
-  --violet: #a78bfa;
-  --danger: #ff7c8a;
-  --warn: #f7c873;
-  --radius: 24px;
-  --radius-sm: 16px;
-  --shadow: 0 40px 100px -60px rgba(49, 78, 190, 0.6);
+  --bg: var(--color-paper-deep);
+  --bg-soft: var(--color-paper);
+  --panel: var(--color-surface);
+  --panel-strong: var(--color-surface-strong);
+  --line: var(--color-rule);
+  --line-strong: var(--color-rule-strong);
+  --text: var(--color-ink);
+  --muted: var(--color-muted);
+  --faint: var(--color-faint);
+  --blue: var(--color-accent);
+  --blue-strong: var(--color-accent-strong);
+  --cyan: var(--color-cyan);
+  --violet: var(--color-violet);
+  --danger: var(--color-rose);
+  --warn: var(--color-amber);
+  --radius: var(--radius-lg);
+  --shadow: 0 2rem 4rem -2.5rem var(--color-shadow);
 }
 
 :root[lang="zh-CN"] {
-  --market-up: #ff6f7d;
-  --market-down: #50d7a2;
+  --market-up: var(--color-rose);
+  --market-down: var(--color-mint);
 }
 
 :root[lang="en-US"] {
-  --market-up: #50d7a2;
-  --market-down: #ff6f7d;
+  --market-up: var(--color-mint);
+  --market-down: var(--color-rose);
 }
 
 * {
@@ -2527,36 +2526,6 @@ strong {
 
   .hit-row small {
     display: none;
-  }
-
-  .mobile-nav {
-    position: fixed;
-    z-index: 50;
-    left: 10px;
-    right: 10px;
-    bottom: max(10px, env(safe-area-inset-bottom));
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    padding: 5px;
-    border: 1px solid var(--line);
-    border-radius: 22px;
-    background: rgba(18, 26, 47, 0.78);
-    backdrop-filter: blur(25px);
-  }
-
-  .mobile-nav-link {
-    display: grid;
-    justify-items: center;
-    gap: 3px;
-    padding: 8px 2px;
-    border-radius: 16px;
-    color: var(--faint);
-    font-size: 8px;
-  }
-
-  .mobile-nav-link.active {
-    color: var(--text);
-    background: rgba(255, 255, 255, 0.08);
   }
 
   .app-footer {

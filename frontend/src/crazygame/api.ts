@@ -14,8 +14,23 @@ import type {
   WatchlistItem,
   WatchlistKind,
 } from './types'
+import { mobileApiRequest } from './mobileApi'
+import { isNativeCrazyGame } from './native'
+import type { TransferModule } from './transfer'
+
+async function errorMessage(response: Response) {
+  try {
+    const payload = await response.json()
+    return String(payload.detail ?? `${response.status} ${response.statusText}`)
+  } catch {
+    return `${response.status} ${response.statusText}`
+  }
+}
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (isNativeCrazyGame()) {
+    return mobileApiRequest<T>(path, init)
+  }
   const headers = new Headers(init.headers)
   headers.set('Content-Type', 'application/json')
   const response = await fetch(`/api${path}`, { ...init, headers })
@@ -171,5 +186,36 @@ export const api = {
 
   dailyReviews: () => request<{ items: DailyReview[] }>('/reviews/daily'),
   runDailyReview: () => request<{ status: string; id?: number }>('/reviews/daily/run', { method: 'POST' }),
+
+  exportTransfer: async (payload: {
+    modules: TransferModule[]
+    include_credentials: boolean
+    password: string
+  }) => {
+    const response = await fetch('/api/transfer/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!response.ok) throw new Error(await errorMessage(response))
+    return response.blob()
+  },
+
+  importTransfer: async (
+    file: File,
+    password: string,
+    modules: TransferModule[]
+  ) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('password', password)
+    form.append('modules', JSON.stringify(modules))
+    const response = await fetch('/api/transfer/import', {
+      method: 'POST',
+      body: form,
+    })
+    if (!response.ok) throw new Error(await errorMessage(response))
+    return response.json() as Promise<{ ok: boolean; modules: string[] }>
+  },
 }
 

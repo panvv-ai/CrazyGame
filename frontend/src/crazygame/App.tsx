@@ -1,21 +1,26 @@
 import { lazy, Suspense, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
-  BellRing,
-  Blocks,
-  Activity,
+  NavLink,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+} from 'react-router-dom'
+import {
   Languages,
-  LayoutDashboard,
   Orbit,
   Settings,
   Sparkles,
-  Star,
 } from 'lucide-react'
+import { m } from 'motion/react'
 
 import { api } from './api'
 import { changeLanguage, default as i18n } from './i18n'
 import type { Language } from './lib'
+import { PageTransition } from './components/transitions'
 import { OverviewPage } from './pages/Overview'
 import { WatchlistPage } from './pages/Watchlist'
 import { GroupsPage } from './pages/Groups'
@@ -23,26 +28,12 @@ import { HoldingsPage } from './pages/Holdings'
 import { AlertsPage } from './pages/Alerts'
 import { SettingsPage } from './pages/Settings'
 import { Loading } from './components/ui'
+import { primaryNavigation } from './navigation'
+import { useScrollMemory } from './scroll'
 
 const AIPage = lazy(() =>
   import('./pages/AI').then((module) => ({ default: module.AIPage }))
 )
-
-const nav = [
-  { to: '/', icon: LayoutDashboard, key: 'nav.overview', end: true },
-  { to: '/watchlist', icon: Star, key: 'nav.watchlist' },
-  { to: '/groups', icon: Blocks, key: 'nav.groups' },
-  { to: '/holdings', icon: Activity, key: 'nav.holdings' },
-  { to: '/alerts', icon: BellRing, key: 'nav.alerts' },
-]
-
-const mobileNav = [
-  { to: '/', icon: LayoutDashboard, key: 'nav.overview', end: true },
-  { to: '/watchlist', icon: Star, key: 'nav.watchlist' },
-  { to: '/ai', icon: Sparkles, key: 'nav.ai' },
-  { to: '/holdings', icon: Activity, key: 'nav.holdings' },
-  { to: '/alerts', icon: BellRing, key: 'nav.alerts' },
-]
 
 function AuroraBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -171,10 +162,9 @@ export default function App() {
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'auto' })
-  }, [location.pathname])
+  const navigationType = useNavigationType()
+  const direction = navigationType === 'POP' ? -1 : 1
+  useScrollMemory(location.pathname, navigationType)
 
   useEffect(() => {
     api.settings()
@@ -208,13 +198,13 @@ export default function App() {
             <small>{t('product.tagline')}</small>
           </span>
         </NavLink>
-        <nav className="desktop-nav" aria-label="primary navigation">
-          {nav.map(({ to, icon: Icon, key, end }) => (
+        <nav className="desktop-nav" aria-label={t('nav.primary')}>
+          {primaryNavigation.map(({ path, icon: Icon, key, end }) => (
             <NavLink
-              key={to}
-              to={to}
+              key={path}
+              to={path}
               end={end}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              className={({ isActive }) => `nav-link ${isActive ? 'is-active' : ''}`}
             >
               <Icon size={16} />
               {t(key)}
@@ -245,34 +235,51 @@ export default function App() {
         </div>
       </header>
 
-      <main className="main-content" key={location.pathname}>
-        <Routes>
-          <Route path="/" element={<OverviewPage />} />
-          <Route path="/watchlist" element={<WatchlistPage />} />
-          <Route path="/groups" element={<GroupsPage />} />
-          <Route path="/holdings" element={<HoldingsPage />} />
-          <Route path="/alerts" element={<AlertsPage />} />
-          <Route
-            path="/ai"
-            element={
-              <Suspense fallback={<Loading />}>
-                <AIPage />
-              </Suspense>
-            }
-          />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+      <main className="main-content">
+        <PageTransition routeKey={location.pathname} direction={direction}>
+          <Routes location={location}>
+            <Route path="/" element={<OverviewPage />} />
+            <Route path="/watchlist" element={<WatchlistPage />} />
+            <Route path="/groups" element={<GroupsPage />} />
+            <Route path="/holdings" element={<HoldingsPage />} />
+            <Route path="/alerts" element={<AlertsPage />} />
+            <Route
+              path="/ai"
+              element={
+                <Suspense fallback={<Loading />}>
+                  <AIPage />
+                </Suspense>
+              }
+            />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </PageTransition>
       </main>
 
-      <nav className="mobile-nav" aria-label="primary navigation">
-        {mobileNav.map(({ to, icon: Icon, key, end }) => (
+      <nav className="mobile-nav" aria-label={t('nav.primary')}>
+        {primaryNavigation.map(({ path, icon: Icon, key, end }) => (
           <NavLink
-            key={to}
-            to={to}
+            key={path}
+            to={path}
             end={end}
-            className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent('crazygame:haptic', {
+                  detail: { kind: 'selection' },
+                })
+              )
+            }
+            className={({ isActive }) =>
+              `mobile-nav-link ${isActive ? 'is-active' : ''}`
+            }
           >
+            <m.span
+              className="mobile-nav-indicator"
+              layoutId="mobile-nav-indicator"
+              transition={{ type: 'spring', stiffness: 430, damping: 38, mass: 0.7 }}
+              aria-hidden="true"
+            />
             <Icon size={19} />
             <span>{t(key)}</span>
           </NavLink>

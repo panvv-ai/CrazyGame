@@ -1,8 +1,22 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, FlaskConical, Plus, ShieldAlert, Sparkles, Trash2 } from 'lucide-react'
+import {
+  BellRing,
+  Check,
+  ClipboardCheck,
+  Database,
+  FlaskConical,
+  Languages,
+  Newspaper,
+  Plus,
+  ShieldAlert,
+  Sparkles,
+  Trash2,
+} from 'lucide-react'
 
 import { api } from '../api'
+import { DataTransferPanel } from '../components/DataTransferPanel'
+import { useToast } from '../components/feedback'
 import {
   Badge,
   Button,
@@ -16,6 +30,15 @@ import {
 import { changeLanguage } from '../i18n'
 import type { Language } from '../lib'
 import type { AppSettings, NotifyChannel } from '../types'
+import { useMediaQuery } from '../useMediaQuery'
+
+type SettingsSection =
+  | 'language'
+  | 'ai'
+  | 'news'
+  | 'review'
+  | 'notifications'
+  | 'data'
 
 const emptySettings: AppSettings = {
   language: 'zh-CN',
@@ -27,11 +50,13 @@ const emptySettings: AppSettings = {
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation()
+  const { notify } = useToast()
+  const mobile = useMediaQuery('(max-width: 47.99rem)')
   const [settings, setSettings] = useState<AppSettings>(emptySettings)
   const [channels, setChannels] = useState<NotifyChannel[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
+  const [section, setSection] = useState<SettingsSection>('language')
   const [error, setError] = useState('')
   const [channelType, setChannelType] = useState<'feishu' | 'aliyun_sms'>('feishu')
   const [channelName, setChannelName] = useState('')
@@ -79,11 +104,10 @@ export function SettingsPage() {
   async function saveSettings() {
     setSaving(true)
     setError('')
-    setMessage('')
     try {
       const saved = await api.updateSettings(settings)
       setSettings(saved)
-      setMessage(t('settings.saved'))
+      notify(t('settings.saved'), 'success')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t('common.unknownError'))
     } finally {
@@ -110,7 +134,6 @@ export function SettingsPage() {
 
   async function addChannel() {
     setError('')
-    setMessage('')
     if (!channelName.trim() || !hasRequiredChannelConfig()) {
       setError(t('settings.channelRequired'))
       return
@@ -125,7 +148,7 @@ export function SettingsPage() {
       })
       setChannelName('')
       setChannelConfig({})
-      setMessage(t('settings.channelCreated'))
+      notify(t('settings.channelCreated'), 'success')
       await load()
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t('common.unknownError'))
@@ -136,7 +159,6 @@ export function SettingsPage() {
 
   async function testDraftChannel() {
     setError('')
-    setMessage('')
     if (!hasRequiredChannelConfig()) {
       setError(t('settings.channelRequired'))
       return
@@ -144,7 +166,7 @@ export function SettingsPage() {
     setTestingDraftChannel(true)
     try {
       await api.testChannelConfig({ type: channelType, config: channelConfig })
-      setMessage(t('settings.testSuccess'))
+      notify(t('settings.testSuccess'), 'success')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t('common.unknownError'))
     } finally {
@@ -155,7 +177,6 @@ export function SettingsPage() {
   async function testCapabilities() {
     setTestingCapabilities(true)
     setError('')
-    setMessage('')
     try {
       setCapabilities(await api.testAICapabilities(settings.ai))
     } catch (reason) {
@@ -184,11 +205,10 @@ export function SettingsPage() {
 
   async function testChannel(channel: NotifyChannel) {
     setError('')
-    setMessage('')
     setTestingChannelId(channel.id)
     try {
       await api.testChannel(channel.id)
-      setMessage(t('settings.testSuccess'))
+      notify(t('settings.testSuccess'), 'success')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t('common.unknownError'))
     } finally {
@@ -197,7 +217,9 @@ export function SettingsPage() {
   }
 
   async function removeChannel(channel: NotifyChannel) {
+    if (!window.confirm(t('settings.deleteChannelConfirm'))) return
     await api.removeChannel(channel.id)
+    notify(t('settings.channelDeleted'), 'success')
     await load()
   }
 
@@ -216,11 +238,32 @@ export function SettingsPage() {
           </Button>
         }
       />
-      {message ? <p className="form-success"><Check size={15} />{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
 
+      {mobile ? (
+        <nav className="settings-mobile-nav" aria-label={t('settings.mobileSections')}>
+          {([
+            ['language', Languages, 'settings.language'],
+            ['ai', Sparkles, 'settings.ai'],
+            ['news', Newspaper, 'settings.newsIntel'],
+            ['review', ClipboardCheck, 'settings.dailyReview'],
+            ['notifications', BellRing, 'settings.notificationsShort'],
+            ['data', Database, 'settings.transfer'],
+          ] as const).map(([key, Icon, label]) => (
+            <button
+              key={key}
+              className={section === key ? 'active' : ''}
+              onClick={() => setSection(key)}
+            >
+              <Icon size={17} />
+              <span>{t(label)}</span>
+            </button>
+          ))}
+        </nav>
+      ) : null}
+
       <div className="settings-layout">
-        <GlassPanel className="settings-card language-card reveal">
+        <GlassPanel className={`settings-card language-card reveal ${mobile && section !== 'language' ? 'settings-mobile-hidden' : ''}`.trim()}>
           <div className="section-head">
             <div>
               <p className="eyebrow">{t('settings.language')}</p>
@@ -245,7 +288,7 @@ export function SettingsPage() {
           </div>
         </GlassPanel>
 
-        <GlassPanel className="settings-card ai-settings-card reveal reveal-delay-1">
+        <GlassPanel className={`settings-card ai-settings-card reveal reveal-delay-1 ${mobile && section !== 'ai' ? 'settings-mobile-hidden' : ''}`.trim()}>
           <div className="section-head">
             <div>
               <p className="eyebrow">{t('settings.ai')}</p>
@@ -333,7 +376,7 @@ export function SettingsPage() {
           </div>
         </GlassPanel>
 
-        <GlassPanel className="settings-card reveal">
+        <GlassPanel className={`settings-card reveal ${mobile && section !== 'news' ? 'settings-mobile-hidden' : ''}`.trim()}>
           <div className="section-head">
             <div>
               <p className="eyebrow">{t('settings.newsIntel')}</p>
@@ -389,7 +432,7 @@ export function SettingsPage() {
           </div>
         </GlassPanel>
 
-        <GlassPanel className="settings-card reveal reveal-delay-2">
+        <GlassPanel className={`settings-card reveal reveal-delay-2 ${mobile && section !== 'review' ? 'settings-mobile-hidden' : ''}`.trim()}>
           <div className="section-head">
             <div>
               <p className="eyebrow">{t('settings.dailyReview')}</p>
@@ -431,7 +474,7 @@ export function SettingsPage() {
           </div>
         </GlassPanel>
 
-        <GlassPanel className="settings-card settings-wide notification-settings reveal">
+        <GlassPanel className={`settings-card settings-wide notification-settings reveal ${mobile && section !== 'notifications' ? 'settings-mobile-hidden' : ''}`.trim()}>
           <div className="section-head">
             <div>
               <p className="eyebrow">{t('settings.notificationsEyebrow')}</p>
@@ -442,10 +485,18 @@ export function SettingsPage() {
           <div className="channel-list">
             {channels.map((channel) => (
               <div className="channel-row" key={channel.id}>
-                <span className="channel-icon">{channel.type === 'feishu' ? 'FS' : 'SMS'}</span>
+                <span className="channel-icon">
+                  {channel.type === 'feishu' ? 'FS' : channel.type === 'local' ? 'LOCAL' : 'SMS'}
+                </span>
                 <div>
                   <strong>{channel.name}</strong>
-                  <small>{channel.type === 'feishu' ? 'Feishu bot' : 'Aliyun SMS'}</small>
+                  <small>
+                    {channel.type === 'feishu'
+                      ? 'Feishu bot'
+                      : channel.type === 'local'
+                        ? t('settings.localNotifications')
+                        : 'Aliyun SMS'}
+                  </small>
                 </div>
                 <Badge tone={channel.enabled ? 'success' : 'neutral'}>
                   {channel.enabled ? 'ON' : 'OFF'}
@@ -542,6 +593,8 @@ export function SettingsPage() {
             </div>
           </div>
         </GlassPanel>
+
+        {mobile && section !== 'data' ? null : <DataTransferPanel />}
 
         <GlassPanel className="data-boundary settings-wide reveal">
           <div className="boundary-icon"><ShieldAlert size={20} /></div>

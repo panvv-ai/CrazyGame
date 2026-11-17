@@ -4,10 +4,12 @@ import { ArrowUpRight, BellRing, Plus, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { api } from '../api'
+import { useCachedState } from '../cache'
 import { DataState } from '../components/DataState'
 import { InstrumentDetailModal } from '../components/InstrumentDetailModal'
 import { LineChart } from '../components/LineChart'
 import { MarkdownReport } from '../components/MarkdownReport'
+import { ResponsiveDialog } from '../components/responsive-dialog'
 import {
   Badge,
   Button,
@@ -15,7 +17,6 @@ import {
   GlassPanel,
   Loading,
   Metric,
-  Modal,
   PageHeader,
 } from '../components/ui'
 import {
@@ -48,13 +49,19 @@ interface OverviewData {
 export function OverviewPage() {
   const { t, i18n } = useTranslation()
   const language = i18n.language as Language
-  const [data, setData] = useState<OverviewData | null>(null)
+  const [data, setData] = useCachedState<OverviewData | null>(
+    'overview:data',
+    () => null
+  )
   const [error, setError] = useState('')
   const [running, setRunning] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [detailItem, setDetailItem] = useState<WatchlistItem | null>(null)
   const [heroMode, setHeroMode] = useState<'holdings' | 'groups'>('holdings')
-  const [holdingSeries, setHoldingSeries] = useState<PortfolioSeries[]>([])
+  const [holdingSeries, setHoldingSeries] = useCachedState<PortfolioSeries[]>(
+    'overview:holding-series',
+    () => []
+  )
 
   async function load() {
     try {
@@ -198,7 +205,17 @@ export function OverviewPage() {
       />
       {error ? <p className="form-error">{error}</p> : null}
 
-      <section className="overview-hero reveal">
+      <section
+        className={`overview-hero reveal ${
+          heroMode === 'holdings'
+            ? data.holdings.length
+              ? ''
+              : 'is-empty'
+            : leadGroup
+              ? ''
+              : 'is-empty'
+        }`.trim()}
+      >
         <div className="hero-copy">
           <div className="hero-mode-switch segmented-control" role="tablist">
             <button
@@ -377,6 +394,7 @@ export function OverviewPage() {
           ) : (
             <EmptyState
               title={t('overview.noWatchlist')}
+              compact
               action={
                 <Link className="button button-secondary" to="/watchlist">
                   {t('common.add')}
@@ -447,7 +465,7 @@ export function OverviewPage() {
           )}
         </GlassPanel>
       </div>
-      <Modal
+      <ResponsiveDialog
         open={reviewOpen && Boolean(data.review)}
         title={data.review?.title || t('overview.dailyReview')}
         onClose={() => setReviewOpen(false)}
@@ -456,7 +474,7 @@ export function OverviewPage() {
           className="review-full"
           content={data.review?.content ?? ''}
         />
-      </Modal>
+      </ResponsiveDialog>
       <InstrumentDetailModal item={detailItem} onClose={() => setDetailItem(null)} />
     </>
   )

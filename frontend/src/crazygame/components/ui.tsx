@@ -1,19 +1,27 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
+import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+
+import { Pressable, Skeleton, type PressableProps } from './primitives'
 
 export function Button({
   variant = 'primary',
   className = '',
   children,
+  haptic,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
+}: PressableProps & {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
+  haptic?: 'selection' | 'success' | 'warning'
 }) {
   return (
-    <button className={`button button-${variant} ${className}`} {...props}>
+    <Pressable
+      className={`button button-${variant} ${className}`.trim()}
+      haptic={haptic}
+      {...props}
+    >
       {children}
-    </button>
+    </Pressable>
   )
 }
 
@@ -179,12 +187,14 @@ export function Badge({
 export function EmptyState({
   title,
   action,
+  compact = false,
 }: {
   title: string
   action?: ReactNode
+  compact?: boolean
 }) {
   return (
-    <div className="empty-state">
+    <div className={`empty-state ${compact ? 'is-compact' : ''}`.trim()}>
       <div className="empty-orbit" aria-hidden="true">
         <span />
         <span />
@@ -196,14 +206,7 @@ export function EmptyState({
 }
 
 export function Loading() {
-  const { t } = useTranslation()
-  return (
-    <div className="loading" role="status" aria-label={t('common.loading')}>
-      <span />
-      <span />
-      <span />
-    </div>
-  )
+  return <Skeleton className="loading-skeleton" lines={3} />
 }
 
 export function Modal({

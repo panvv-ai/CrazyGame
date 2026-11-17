@@ -4,7 +4,10 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 
 import { api } from '../api'
+import { useCachedState } from '../cache'
+import { useToast } from '../components/feedback'
 import { LineChart } from '../components/LineChart'
+import { ResponsiveDialog } from '../components/responsive-dialog'
 import {
   Badge,
   Button,
@@ -15,7 +18,6 @@ import {
   InstrumentMark,
   Loading,
   Metric,
-  Modal,
   PageHeader,
 } from '../components/ui'
 import {
@@ -34,6 +36,7 @@ import type {
   WatchlistItem,
   WatchlistKind,
 } from '../types'
+import { useVisiblePolling } from '../useVisiblePolling'
 
 interface DraftMember {
   instrument_id: number
@@ -42,11 +45,18 @@ interface DraftMember {
 
 export function GroupsPage() {
   const { t } = useTranslation()
+  const { notify } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const [kind, setKind] = useState<WatchlistKind>('stock')
   const [scope, setScope] = useState<InstrumentScope>('stock_cn')
-  const [groups, setGroups] = useState<AssetGroup[]>([])
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
+  const [groups, setGroups] = useCachedState<AssetGroup[]>(
+    'groups:items',
+    () => []
+  )
+  const [watchlist, setWatchlist] = useCachedState<WatchlistItem[]>(
+    'groups:watchlist',
+    () => []
+  )
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [series, setSeries] = useState<GroupPoint[]>([])
   const [memberSeries, setMemberSeries] = useState<GroupMemberPoint[]>([])
@@ -91,6 +101,9 @@ export function GroupsPage() {
   useEffect(() => {
     void load()
   }, [])
+  useVisiblePolling(() => {
+    void load()
+  })
 
   useEffect(() => {
     if (!selectedId) {
@@ -192,6 +205,7 @@ export function GroupsPage() {
       const saved = editing
         ? await api.updateGroup(editing.id, payload)
         : await api.createGroup(payload)
+      notify(t(editing ? 'groups.updated' : 'groups.created'), 'success')
       setModalOpen(false)
       setSearchParams({ id: String(saved.id) })
       await load()
@@ -203,6 +217,7 @@ export function GroupsPage() {
   async function remove(group: AssetGroup) {
     if (!window.confirm(t('groups.deleteConfirm'))) return
     await api.removeGroup(group.id)
+    notify(t('groups.deleted'), 'success')
     await load()
   }
 
@@ -222,12 +237,12 @@ export function GroupsPage() {
         eyebrow={t('groups.eyebrow')}
         title={t('groups.title')}
         subtitle={t('groups.subtitle')}
-        action={
+        action={visibleGroups.length ? (
           <Button onClick={openCreate}>
             <Plus size={16} />
             {t('groups.newGroup')}
           </Button>
-        }
+        ) : undefined}
       />
       <div className="scope-switcher reveal">
         <div className="segmented-control">
@@ -397,13 +412,14 @@ export function GroupsPage() {
       ) : (
         <GlassPanel>
           <EmptyState
+            compact
             title={t('groups.empty')}
             action={<Button onClick={openCreate}>{t('groups.newGroup')}</Button>}
           />
         </GlassPanel>
       )}
 
-      <Modal
+      <ResponsiveDialog
         open={modalOpen}
         title={t(editing ? 'groups.editGroup' : 'groups.newGroup')}
         onClose={() => setModalOpen(false)}
@@ -467,7 +483,7 @@ export function GroupsPage() {
           </Button>
           <Button onClick={saveGroup}>{t('common.save')}</Button>
         </div>
-      </Modal>
+      </ResponsiveDialog>
     </>
   )
 }

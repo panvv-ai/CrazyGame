@@ -8,7 +8,8 @@ import { changeClass, formatPercent, seriesViewState } from '../lib'
 import type { Quote } from '../types'
 import { DataState } from './DataState'
 import { LineChart } from './LineChart'
-import { Button, EmptyState, Loading, Metric, Modal } from './ui'
+import { ResponsiveDialog } from './responsive-dialog'
+import { Button, EmptyState, Loading, Metric } from './ui'
 
 export interface DetailInstrument {
   instrument_id: number
@@ -61,7 +62,7 @@ export function InstrumentDetailModal({
   const state = seriesViewState(points, loading, error)
 
   return (
-    <Modal
+    <ResponsiveDialog
       open={Boolean(item)}
       title={item ? `${item.name} · ${item.symbol}` : ''}
       onClose={onClose}
@@ -131,6 +132,6 @@ export function InstrumentDetailModal({
           )}
         </>
       ) : null}
-    </Modal>
+    </ResponsiveDialog>
   )
 }

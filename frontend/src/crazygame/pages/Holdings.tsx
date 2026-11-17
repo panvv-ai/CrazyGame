@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 
 import { api } from '../api'
+import { useCachedState } from '../cache'
+import { useToast } from '../components/feedback'
+import { ResponsiveDialog } from '../components/responsive-dialog'
 import {
   AllocationRing,
   Button,
@@ -12,7 +15,6 @@ import {
   Input,
   InstrumentMark,
   Loading,
-  Modal,
   PageHeader,
   Select,
 } from '../components/ui'
@@ -27,9 +29,16 @@ import type { Holding, WatchlistItem } from '../types'
 
 export function HoldingsPage() {
   const { t, i18n } = useTranslation()
+  const { notify } = useToast()
   const language = i18n.language as Language
-  const [holdings, setHoldings] = useState<Holding[]>([])
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
+  const [holdings, setHoldings] = useCachedState<Holding[]>(
+    'holdings:items',
+    () => []
+  )
+  const [watchlist, setWatchlist] = useCachedState<WatchlistItem[]>(
+    'holdings:watchlist',
+    () => []
+  )
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Holding | null>(null)
@@ -124,6 +133,7 @@ export function HoldingsPage() {
         average_cost: Number(averageCost),
         note,
       })
+      notify(t('holdings.saved'), 'success')
       setModalOpen(false)
       await load()
     } catch (reason) {
@@ -132,7 +142,9 @@ export function HoldingsPage() {
   }
 
   async function remove(holding: Holding) {
+    if (!window.confirm(t('holdings.deleteConfirm'))) return
     await api.removeHolding(holding.id)
+    notify(t('holdings.deleted'), 'success')
     await load()
   }
 
@@ -142,12 +154,12 @@ export function HoldingsPage() {
         eyebrow={t('holdings.eyebrow')}
         title={t('holdings.title')}
         subtitle={t('holdings.subtitle')}
-        action={
+        action={holdings.length ? (
           <Button onClick={openAdd}>
             <Plus size={16} />
             {t('holdings.add')}
           </Button>
-        }
+        ) : undefined}
       />
       {error ? <p className="form-error">{error}</p> : null}
       {loading ? (
@@ -184,7 +196,55 @@ export function HoldingsPage() {
               </div>
             </GlassPanel>
           </div>
-          <GlassPanel className="table-panel reveal reveal-delay-1">
+          <div className="holding-mobile-list">
+            {holdings.map((holding) => (
+              <article className="holding-mobile-card" key={holding.id}>
+                <div className="instrument-identity">
+                  <InstrumentMark
+                    name={holding.name}
+                    symbol={holding.symbol}
+                    market={holding.market}
+                  />
+                  <span>
+                    <strong>{holding.name}</strong>
+                    <small>
+                      {holding.symbol} · {t(`asset.${holding.asset_type}`)}
+                    </small>
+                  </span>
+                </div>
+                <div className="holding-mobile-values">
+                  <span>
+                    <small>{t('holdings.marketValue')}</small>
+                    <strong>
+                      {holding.market_value === null
+                        ? '--'
+                        : formatMoney(holding.market_value, holding.currency, language)}
+                    </strong>
+                  </span>
+                  <span>
+                    <small>{t('holdings.pnl')}</small>
+                    <strong className={changeClass(holding.unrealized_pnl)}>
+                      {holding.unrealized_pnl === null
+                        ? '--'
+                        : formatMoney(holding.unrealized_pnl, holding.currency, language)}
+                    </strong>
+                  </span>
+                </div>
+                <div className="holding-mobile-meta">
+                  <span>{holding.quantity} · {holding.average_cost.toFixed(2)}</span>
+                  <span className="inline-actions">
+                    <button className="icon-button" onClick={() => openEdit(holding)} aria-label={t('common.edit')}>
+                      <Pencil size={15} />
+                    </button>
+                    <button className="icon-button danger" onClick={() => remove(holding)} aria-label={t('common.delete')}>
+                      <Trash2 size={15} />
+                    </button>
+                  </span>
+                </div>
+              </article>
+            ))}
+          </div>
+          <GlassPanel className="table-panel holdings-table-panel reveal reveal-delay-1">
             <div className="section-head">
               <div>
                 <p className="eyebrow">{t('holdings.positions')}</p>
@@ -248,11 +308,11 @@ export function HoldingsPage() {
         </>
       ) : (
         <GlassPanel>
-          <EmptyState title={t('holdings.empty')} action={<Button onClick={openAdd}>{t('holdings.add')}</Button>} />
+          <EmptyState compact title={t('holdings.empty')} action={<Button onClick={openAdd}>{t('holdings.add')}</Button>} />
         </GlassPanel>
       )}
 
-      <Modal
+      <ResponsiveDialog
         open={modalOpen}
         title={t(editing ? 'holdings.edit' : 'holdings.add')}
         onClose={() => setModalOpen(false)}
@@ -300,7 +360,7 @@ export function HoldingsPage() {
           </Button>
           <Button onClick={save}>{t('common.save')}</Button>
         </div>
-      </Modal>
+      </ResponsiveDialog>
     </>
   )
 }

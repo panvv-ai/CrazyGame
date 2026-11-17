@@ -13,7 +13,9 @@ import { useNavigate } from 'react-router-dom'
 
 import { api } from '../api'
 import { aiApi } from '../ai'
+import { useCachedState } from '../cache'
 import { DataState } from '../components/DataState'
+import { useToast } from '../components/feedback'
 import { InstrumentDetailModal } from '../components/InstrumentDetailModal'
 import {
   Badge,
@@ -47,10 +49,14 @@ import type {
 
 export function WatchlistPage() {
   const { t } = useTranslation()
+  const { notify } = useToast()
   const navigate = useNavigate()
   const [kind, setKind] = useState<WatchlistKind>('stock')
   const [scope, setScope] = useState<InstrumentScope>('stock_cn')
-  const [items, setItems] = useState<WatchlistItem[]>([])
+  const [items, setItems] = useCachedState<WatchlistItem[]>(
+    `watchlist:${kind}:${scope}`,
+    () => []
+  )
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Instrument[]>([])
@@ -63,7 +69,10 @@ export function WatchlistPage() {
   const [recognized, setRecognized] = useState<RecognizedInstrument[]>([])
   const [selectedCodes, setSelectedCodes] = useState<string[]>([])
   const [recognizing, setRecognizing] = useState(false)
-  const [sparklines, setSparklines] = useState<Record<number, number[]>>({})
+  const [sparklines, setSparklines] = useCachedState<Record<number, number[]>>(
+    `watchlist:sparklines:${kind}:${scope}`,
+    () => ({})
+  )
 
   async function load(showLoading = false) {
     if (showLoading) setLoading(true)
@@ -79,7 +88,6 @@ export function WatchlistPage() {
   }
 
   useEffect(() => {
-    setItems([])
     void load(true)
   }, [kind, scope])
 
@@ -171,6 +179,7 @@ export function WatchlistPage() {
     setAdding(key)
     try {
       await api.addWatchlist({ ...item, kind })
+      notify(t('watchlist.added'), 'success')
       setQuery('')
       setResults([])
       await load()
@@ -216,6 +225,7 @@ export function WatchlistPage() {
   async function remove(item: WatchlistItem) {
     if (!window.confirm(t('watchlist.removeConfirm'))) return
     await api.removeWatchlist(item.id)
+    notify(t('watchlist.removed'), 'success')
     await load()
   }
 
@@ -474,7 +484,10 @@ export function WatchlistPage() {
         </div>
       ) : (
         <GlassPanel>
-          <EmptyState title={t(kind === 'stock' ? 'watchlist.emptyStock' : 'watchlist.emptyFund')} />
+          <EmptyState
+            compact
+            title={t(kind === 'stock' ? 'watchlist.emptyStock' : 'watchlist.emptyFund')}
+          />
         </GlassPanel>
       )}
       <InstrumentDetailModal item={chartItem} onClose={() => setChartItem(null)} />

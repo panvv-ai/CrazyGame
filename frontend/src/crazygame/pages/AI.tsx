@@ -1,6 +1,7 @@
 import {
   Bot,
   FileText,
+  History,
   ImagePlus,
   MessageSquare,
   Plus,
@@ -20,6 +21,7 @@ import { api } from '../api'
 import { AIReportView } from '../components/AIReportView'
 import { DataState } from '../components/DataState'
 import { MarkdownReport } from '../components/MarkdownReport'
+import { BottomSheet } from '../components/overlays'
 import {
   Button,
   EmptyState,
@@ -80,6 +82,7 @@ export function AIPage() {
   >([])
   const [recognizing, setRecognizing] = useState(false)
   const [sessionQuery, setSessionQuery] = useState('')
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const activeIdRef = useRef<number | undefined>(undefined)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
@@ -202,6 +205,7 @@ export function AIPage() {
       setError('')
       setChatCandidates([])
       if (tab !== 'chat') changeTab('chat')
+      setMobileSidebarOpen(false)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t('common.unknownError'))
     }
@@ -462,6 +466,7 @@ export function AIPage() {
 
   function changeTab(next: Tab) {
     setTab(next)
+    setMobileSidebarOpen(false)
     setError('')
     const nextParams = new URLSearchParams(params)
     nextParams.set('tab', next)
@@ -616,6 +621,14 @@ export function AIPage() {
                 </p>
               </div>
               <div className="chat-actions">
+                <button
+                  type="button"
+                  className="icon-button mobile-session-trigger"
+                  onClick={() => setMobileSidebarOpen(true)}
+                  aria-label={t('ai.sessions')}
+                >
+                  <History size={16} />
+                </button>
                 <div className="segmented-control ai-mode-tabs">
                   <button
                     className={tab === 'chat' ? 'active' : ''}
@@ -789,6 +802,14 @@ export function AIPage() {
         </div>
       ) : (
         <div className="ai-workbench ai-report-workspace">
+          <button
+            type="button"
+            className="icon-button mobile-session-trigger ai-mobile-report-trigger"
+            onClick={() => setMobileSidebarOpen(true)}
+            aria-label={t('ai.reportHistory')}
+          >
+            <History size={16} />
+          </button>
           <aside className="ai-sessions ai-report-history">
             <div className="ai-sessions-head">
               <div>
@@ -846,6 +867,88 @@ export function AIPage() {
           )}
         </div>
       )}
+
+      <BottomSheet
+        open={mobileSidebarOpen}
+        title={tab === 'chat' ? t('ai.sessions') : t('ai.reportHistory')}
+        onClose={() => setMobileSidebarOpen(false)}
+      >
+        {tab === 'chat' ? (
+          <div className="mobile-ai-sheet">
+            <Button variant="secondary" className="full-button" onClick={startNewChat}>
+              <Plus size={16} />
+              {t('ai.newChat')}
+            </Button>
+            <label className="session-search">
+              <Search size={15} />
+              <input
+                value={sessionQuery}
+                onChange={(event) => setSessionQuery(event.target.value)}
+                placeholder={t('ai.searchSessions')}
+                aria-label={t('ai.searchSessions')}
+              />
+            </label>
+            <div className="mobile-session-list">
+              {filteredSessions.map((session) => (
+                <button
+                  key={session.id}
+                  type="button"
+                  className={session.id === sessionId ? 'active' : ''}
+                  onClick={() => void selectSession(session.id)}
+                  disabled={loading || reportLoading}
+                >
+                  <strong>{session.title || t('ai.untitled')}</strong>
+                  <small>
+                    {session.active_instrument?.name || '--'}
+                    {' · '}
+                    {t('ai.messageCount', { count: session.message_count })}
+                  </small>
+                </button>
+              ))}
+              {!filteredSessions.length ? (
+                <p className="muted-copy">
+                  {sessionQuery ? t('ai.noSessionMatches') : t('ai.noSessions')}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <div className="mobile-ai-sheet">
+            <Button
+              className="full-button"
+              onClick={() => void generateReport()}
+              disabled={!canReport || reportLoading}
+            >
+              <RefreshCw size={15} />
+              {reportLoading ? t('ai.generating') : t('ai.generate')}
+            </Button>
+            <div className="mobile-session-list">
+              {reports.map((record) => (
+                <button
+                  key={record.id}
+                  type="button"
+                  className={selectedReport?.id === record.id ? 'active' : ''}
+                  onClick={() => {
+                    setSelectedReport(record)
+                    setMobileSidebarOpen(false)
+                  }}
+                  disabled={reportLoading}
+                >
+                  <strong>{record.title}</strong>
+                  <small>
+                    {new Date(record.created_at).toLocaleString()} · {record.score}/100
+                  </small>
+                </button>
+              ))}
+              {!reports.length ? (
+                <p className="muted-copy">
+                  {canReport ? t('ai.noReports') : t('ai.selectForReport')}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </BottomSheet>
     </>
   )
 }

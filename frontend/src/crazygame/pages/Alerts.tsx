@@ -4,6 +4,9 @@ import { BellPlus, CheckCircle2, Pencil, Trash2 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 
 import { api } from '../api'
+import { useCachedState } from '../cache'
+import { useToast } from '../components/feedback'
+import { ResponsiveDialog } from '../components/responsive-dialog'
 import {
   Badge,
   Button,
@@ -13,13 +16,14 @@ import {
   Input,
   InstrumentMark,
   Loading,
-  Modal,
   PageHeader,
   ProgressBar,
   Select,
 } from '../components/ui'
 import { changeClass, formatDateTime, formatPercent, type Language } from '../lib'
 import type { AlertHit, AlertRule, NotifyChannel, WatchlistItem } from '../types'
+import { nativeBridge } from '../native'
+import { useVisiblePolling } from '../useVisiblePolling'
 
 type Tab = 'rules' | 'hits'
 type AlertFrequency = 'daily' | '30m' | '1h' | '6h' | `minutes:${number}`
@@ -48,14 +52,21 @@ function frequencyMinutes(frequency: AlertFrequency): number {
 
 export function AlertsPage() {
   const { t, i18n } = useTranslation()
+  const { notify } = useToast()
   const language = i18n.language as Language
   const [searchParams] = useSearchParams()
   const initialInstrument = Number(searchParams.get('instrument') || 0)
   const [tab, setTab] = useState<Tab>('rules')
-  const [rules, setRules] = useState<AlertRule[]>([])
-  const [hits, setHits] = useState<AlertHit[]>([])
-  const [channels, setChannels] = useState<NotifyChannel[]>([])
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
+  const [rules, setRules] = useCachedState<AlertRule[]>('alerts:rules', () => [])
+  const [hits, setHits] = useCachedState<AlertHit[]>('alerts:hits', () => [])
+  const [channels, setChannels] = useCachedState<NotifyChannel[]>(
+    'alerts:channels',
+    () => []
+  )
+  const [watchlist, setWatchlist] = useCachedState<WatchlistItem[]>(
+    'alerts:watchlist',
+    () => []
+  )
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(Boolean(initialInstrument))
   const [editing, setEditing] = useState<AlertRule | null>(null)
@@ -68,7 +79,6 @@ export function AlertsPage() {
   const [frequency, setFrequency] = useState<AlertFrequency>('daily')
   const [marketHoursOnly, setMarketHoursOnly] = useState(true)
   const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
   const [runNow, setRunNow] = useState(false)
 
   async function load() {
@@ -102,6 +112,9 @@ export function AlertsPage() {
   useEffect(() => {
     void load()
   }, [])
+  useVisiblePolling(() => {
+    void load()
+  })
 
   const uniqueWatchlist = useMemo(() => {
     const seen = new Set<number>()
@@ -122,7 +135,6 @@ export function AlertsPage() {
     setFrequency('daily')
     setMarketHoursOnly(true)
     setRunNow(false)
-    setNotice('')
     setModalOpen(true)
   }
 
@@ -137,13 +149,11 @@ export function AlertsPage() {
     setFrequency(frequencyForRule(rule))
     setMarketHoursOnly(rule.market_hours_only)
     setRunNow(false)
-    setNotice('')
     setModalOpen(true)
   }
 
   async function save() {
     setError('')
-    setNotice('')
     const target = Number(instrumentId)
     if (!target || threshold === '' || !selectedChannels.length) {
       setError(t('common.required'))
@@ -168,7 +178,7 @@ export function AlertsPage() {
       } as const
       if (editing) {
         await api.updateAlert(editing.id, payload)
-        setNotice(t('alerts.updated'))
+        notify(t('alerts.updated'), 'success')
       } else {
         const created = await api.createAlert({
           instrument_id: target,
@@ -176,7 +186,7 @@ export function AlertsPage() {
           run_now: runNow,
         })
         const immediate = created.run_result?.scan
-        setNotice(
+        notify(
           runNow
             ? immediate?.triggered
               ? t('alerts.immediateTriggered')
@@ -185,8 +195,12 @@ export function AlertsPage() {
                 : immediate?.reason === 'quote_unavailable'
                   ? t('alerts.immediateQuoteUnavailable')
                   : t('alerts.immediateChecked')
-            : t('alerts.saved')
+            : t('alerts.saved'),
+          'success'
         )
+      }
+      if (channels.some((channel) => channel.type === 'local' && selectedChannels.includes(channel.id))) {
+        nativeBridge()?.requestNotificationPermission()
       }
       setModalOpen(false)
       setEditing(null)
@@ -231,15 +245,14 @@ export function AlertsPage() {
         eyebrow={t('alerts.eyebrow')}
         title={t('alerts.title')}
         subtitle={t('alerts.subtitle')}
-        action={
+        action={rules.length ? (
           <Button onClick={openCreate}>
             <BellPlus size={16} />
             {t('alerts.create')}
           </Button>
-        }
+        ) : undefined}
       />
       {error ? <p className="form-error">{error}</p> : null}
-      {notice ? <p className="form-success"><CheckCircle2 size={15} />{notice}</p> : null}
       <div className="alert-toolbar reveal">
         <div className="segmented-control">
         <button className={tab === 'rules' ? 'active' : ''} onClick={() => setTab('rules')}>
@@ -364,6 +377,7 @@ export function AlertsPage() {
         ) : (
           <GlassPanel>
             <EmptyState
+              compact
               title={t('alerts.noRules')}
               action={<Button onClick={openCreate}>{t('alerts.create')}</Button>}
             />
@@ -401,11 +415,11 @@ export function AlertsPage() {
         </GlassPanel>
       ) : (
         <GlassPanel>
-          <EmptyState title={t('alerts.noHits')} />
+          <EmptyState compact title={t('alerts.noHits')} />
         </GlassPanel>
       )}
 
-      <Modal
+      <ResponsiveDialog
         open={modalOpen}
         title={t(editing ? 'alerts.edit' : 'alerts.create')}
         onClose={() => {
@@ -494,7 +508,12 @@ export function AlertsPage() {
                     )
                   }
                 />
-                {channel.name} · {channel.type === 'feishu' ? 'Feishu' : 'SMS'}
+                {channel.name} ·{' '}
+                {channel.type === 'feishu'
+                  ? 'Feishu'
+                  : channel.type === 'local'
+                    ? t('settings.localNotifications')
+                    : 'SMS'}
               </label>
             ))}
           </div>
@@ -511,7 +530,7 @@ export function AlertsPage() {
           </Button>
           <Button onClick={save}>{t('common.save')}</Button>
         </div>
-      </Modal>
+      </ResponsiveDialog>
     </>
   )
 }

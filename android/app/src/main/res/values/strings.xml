@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CrazyGame</string>
+    <string name="notification_channel_name">Price alerts</string>
+    <string name="notification_channel_description">Local CrazyGame alert notifications</string>
+    <string name="notification_permission_denied">Notification permission was not granted.</string>
+</resources>

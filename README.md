@@ -117,6 +117,19 @@ cd CrazyGame
 
 脚本会自动构建并启动容器，完成后访问 <http://127.0.0.1:8000>。
 
+### Android
+
+Android 版与 PC Web 独立运行，使用同一套 React 源码和本地加密 SQLite。
+
+```bash
+make android-debug
+make android-release
+```
+
+Debug APK 位于 `android/app/build/outputs/apk/debug/app-debug.apk`。签名发布版通过
+`mobile-v*` 标签由 GitHub Actions 生成。开发环境和签名说明见
+[Android Development](docs/mobile-android-development.md)。
+
 ## 配置
 
 CrazyGame 不提供环境配置文件。语言、LLM Config、新闻检索和通知渠道均在设置页完成，凭据加密后保存在本地 SQLite。

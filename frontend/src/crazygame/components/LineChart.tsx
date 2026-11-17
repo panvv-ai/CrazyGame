@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   AreaSeries,
   ColorType,
+  CrosshairMode,
   LineSeries,
   createChart,
   type ISeriesApi,
@@ -29,6 +30,7 @@ export function LineChart({
   useEffect(() => {
     if (!hostRef.current || series.length === 0) return
     const chart = createChart(hostRef.current, {
+      autoSize: true,
       height,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
@@ -50,10 +52,25 @@ export function LineChart({
         rightOffset: 2,
       },
       crosshair: {
+        mode: CrosshairMode.Normal,
         vertLine: { color: 'rgba(255,255,255,.18)' },
         horzLine: { color: 'rgba(255,255,255,.18)' },
       },
-      handleScale: { axisPressedMouseMove: false },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: false,
+      },
+      handleScale: {
+        axisPressedMouseMove: false,
+        mouseWheel: true,
+        pinch: true,
+      },
+      kineticScroll: {
+        mouse: false,
+        touch: true,
+      },
     })
     const created: ISeriesApi<'Area' | 'Line'>[] = []
     series.forEach((item, index) => {
@@ -85,17 +102,19 @@ export function LineChart({
       }
     })
     chart.timeScale().fitContent()
-    const observer = new ResizeObserver(() => {
-      if (hostRef.current) chart.applyOptions({ width: hostRef.current.clientWidth })
-    })
-    observer.observe(hostRef.current)
     return () => {
-      observer.disconnect()
       created.splice(0)
       chart.remove()
     }
   }, [series, height])
 
-  return <div className="line-chart" ref={hostRef} aria-label={t('common.chart')} />
+  return (
+    <div
+      className="line-chart"
+      ref={hostRef}
+      aria-label={t('common.chart')}
+      style={{ height }}
+    />
+  )
 }
 
